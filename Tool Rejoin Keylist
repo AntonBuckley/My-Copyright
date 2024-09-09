@@ -46,9 +46,7 @@ if is_blacklisted:
     print("Invalid Key, Please Check And Try Again Later")
     print("You Can't Use This Script For This Reason: Your Key Is Blacklisted")
     print(Fore.RED + "SHARE KEY CON CẶC" + Style.RESET_ALL)
-    sys.exit()
-    sys.exit()
-    sys.exit()
+    exit()
 elif is_valid:
     print("Whitelist...") 
     print("Whitelist...")
@@ -72,6 +70,4 @@ else:
     print("Whitelist Done")
     print("Invalid Key, Please Check And Try Again Later")
     print("You Can't Use This Script For This Reason: Your Key Is Invalid")
-    sys.exit()
-    sys.exit()
-    sys.exit()
+    exit()
