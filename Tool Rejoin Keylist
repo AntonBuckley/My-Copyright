@@ -1,7 +1,7 @@
 import sys
 
 valid_keylist = [
-""
+
 ]
 
 blacklisted_keylist = ["axionix"]
