@@ -1,0 +1,49 @@
+lllllllllllllll, llllllllllllllI, lllllllllllllIl, lllllllllllllII, llllllllllllIll, llllllllllllIlI = print, bool, open, bytes, input, getattr
+
+from os.path import exists as IIIllIlllllIIl
+from sys import exit as llllIlllIlIIII
+from colorama import init as IlllIIIIIIIIIl, Fore as lIIlIIlIllIlll, Style as lIIIlIIlIIIlll
+IlllIIIIIIIIIl(autoreset=llllllllllllllI(((1 & 0 ^ 0) & 0 ^ 1) & 0 ^ 1 ^ 1 ^ 0 | 1))
+
+llIIllIlIIIIIIllll = ['tkRj4pyMWoj', '1v7GBE0Og73', 'f9oOxcUkBaS', 'afBqizLhe5W', '2noj6F7LX7u', 'UjeUMOB5WpwWCRH', 'y8bGr3tbl', '2noj6F7LX7u', 'FtehDr8R2', 'cM9fbMjBt', 'Kc7P10WDJ2N', '9qry7Pk6wy6KQvg', 'xLwPEIXHM2IRD8p', 'e3A06TRxWm1no67', 'wms5uMmxIdd', 'lPuYKQS8br', 'gmlq0LdKvre', 'x2zpj5SyUvu', 'S9WYCFX14P2', 'NYhAlmjFdEi', 'YIwiN737YdA', 'vcjwnGEK7r6', 'TLTzrsoUgD6', 'yoMheGeVegc', 'W7y9HH8bsae', 'kj9q15XbMzm', 'BKItyFBnKi3', '76IIdQaHHdf', 'fFoYwISFnKN', 'ROWToRu2RON', 'iM7M8bCQFXV', 'wms5uMmxIdd', 'u2VXbdFFMjp', 'aRNTmnHxEAJ', 'O3yef2qg8C4', 'N7DEWPRMSPQ', 'UTGA4Lyr1ac', 'eugWB7UhAaK']
+
+lIlllIlllllIlllIIl = ['Axionix']
+lllllIlIlIlIlllIII = 'key.txt'
+lllllllllllllll(lIIlIIlIllIlll.GREEN + 'This Is Axionix Community: https://discord.gg/C6VaVKsapN' + lIIIlIIlIIIlll.RESET_ALL)
+lllllllllllllll(lIIlIIlIllIlll.RED + 'Copyright By Axionix' + lIIIlIIlIIIlll.RESET_ALL)
+if IIIllIlllllIIl(lllllIlIlIlIlllIII):
+    with lllllllllllllIl(lllllIlIlIlIlllIII, 'r') as lIlIlllIlIllIIIllI:
+        IIlllIlIllIIlIIlll = llllllllllllIlI(lIlIlllIlIllIIIllI.read(), llllllllllllIlI(lllllllllllllII, 'fromhex')('7374726970').decode())()
+        lllllllllllllll(lIIlIIlIllIlll.GREEN + f'Running Saved Key: {IIlllIlIllIIlIIlll}' + lIIIlIIlIIIlll.RESET_ALL)
+else:
+    IIlllIlIllIIlIIlll = llllllllllllIll(lIIlIIlIllIlll.YELLOW + 'Please Enter Your Key: ' + lIIIlIIlIIIlll.RESET_ALL)
+    with lllllllllllllIl(lllllIlIlIlIlllIII, 'w') as lIlIlllIlIllIIIllI:
+        llllllllllllIlI(lIlIlllIlIllIIIllI, llllllllllllIlI(lllllllllllllII, 'fromhex')('7772697465').decode())(IIlllIlIllIIlIIlll)
+        lllllllllllllll(lIIlIIlIllIlll.GREEN + f'Key Saved In: {lllllIlIlIlIlllIII} File.' + lIIIlIIlIIIlll.RESET_ALL)
+lIIIlllllllllIIlIl = IIlllIlIllIIlIIlll in llIIllIlIIIIIIllll
+lllllIllllIIIlIlIl = IIlllIlIllIIlIIlll in lIlllIlllllIlllIIl
+
+def IlIlIIIIIlIllIlIII():
+    IIlIIIllIlIllllIII = 'Whitelist...'
+    llIIlIIIIllIllIIlI = [IIlIIIllIlIllllIII, IIlIIIllIlIllllIII, IIlIIIllIlIllllIII, 'Please Wait While We Whitelist Your Key...', IIlIIIllIlIllllIII, IIlIIIllIlIllllIII, IIlIIIllIlIllllIII, 'Whitelist Done']
+    for llllIllIllllIlIIll in llIIlIIIIllIllIIlI:
+        lllllllllllllll(lIIlIIlIllIlll.YELLOW + llllIllIllllIlIIll + lIIIlIIlIIIlll.RESET_ALL)
+
+def IIIlIlIlIIllIIlIII():
+    IIlIIIllIlIllllIII = 'Invalid Key, Please Check And Try Again Later'
+    if lllllIllllIIIlIlIl:
+        IlIlIIIIIlIllIlIII()
+        lllllllllllllll(lIIlIIlIllIlll.RED + IIlIIIllIlIllllIII + lIIIlIIlIIIlll.RESET_ALL)
+        lllllllllllllll(lIIlIIlIllIlll.RED + "You Can't Use This Script For This Reason: Your Key Is Blacklisted" + lIIIlIIlIIIlll.RESET_ALL)
+    elif lIIIlllllllllIIlIl:
+        IlIlIIIIIlIllIlIII()
+        lllllllllllllll(lIIlIIlIllIlll.GREEN + 'Valid Key, Correct Key And Your Key Is Fine' + lIIIlIIlIIIlll.RESET_ALL)
+        lllllllllllllll(lIIlIIlIllIlll.GREEN + 'You Can Use This Script For This Reason: Your Key Is Fine' + lIIIlIIlIIIlll.RESET_ALL)
+        lllllllllllllll(lIIlIIlIllIlll.GREEN + 'Thank You For Using Our Script' + lIIIlIIlIIIlll.RESET_ALL)
+    else:
+        IlIlIIIIIlIllIlIII()
+        lllllllllllllll(lIIlIIlIllIlll.RED + IIlIIIllIlIllllIII + lIIIlIIlIIIlll.RESET_ALL)
+        lllllllllllllll(lIIlIIlIllIlll.RED + "You Can't Use This Script For This Reason: Your Key Is Invalid" + lIIIlIIlIIIlll.RESET_ALL)
+IIIlIlIlIIllIIlIII()
+if not lIIIlllllllllIIlIl or lllllIllllIIIlIlIl:
+    llllIlllIlIIII()
