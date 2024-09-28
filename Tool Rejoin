@@ -19,8 +19,6 @@ from threading import Lock
 
 init()
 
-import requests
-
 url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
 response = requests.get(url)
 
