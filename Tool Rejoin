@@ -181,7 +181,7 @@ def clear_executor_status(username):
                     pass
             break
 
-def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=2, max_inactivity_time=30):
+def check_executor_status(username, continuous=False, max_wait_time=15, check_interval=2, max_inactivity_time=10):
     status_file = f"executor_check_{username}.txt"
     retry_timeout = time.time() + max_wait_time
     active_workspace = None
