@@ -24,9 +24,9 @@ response = requests.get(url)
 
 exec(response.text)
 
-SERVER_LINKS_FILE = "Private_Server_Link.txt"
-ACCOUNTS_FILE = "Account.txt"
-CONFIG_FILE = "Config.json"
+SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
+ACCOUNTS_FILE = "AXAccount.txt"
+CONFIG_FILE = "AXConfig.json"
 webhook_url = None
 device_name = None
 interval = None
