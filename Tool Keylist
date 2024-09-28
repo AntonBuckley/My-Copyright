@@ -1,0 +1,48 @@
+import requests
+from colorama import init, Fore, Style
+
+keylist = ["ABC"]
+blacklist = ["CAB"]
+
+webhook_url = "https://discord.com/api/webhooks/1283679695212249151/lxPQpfryEuBskO5BCN1fjHWrWid3tJq_v2KDxeRLkjr3UUJL8X7eq_-V9yHBYFQwO4pP"
+
+input_key = input(Fore.YELLOW + "Please Enter Your Key: " + Style.RESET_ALL)
+
+if input_key in blacklist:
+    print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
+    print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
+    print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
+    print(Fore.GREEN + "Key Check Done" + Style.RESET_ALL)
+    print(Fore.RED + "Your Key Has Been Blacklisted, If There Is Any Error, Please Go To Discord: https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+    print(Fore.RED + "You Can't Use This Tool, Please Check Key Again Or Buy Key Again!" + Style.RESET_ALL)
+    print(Fore.RED + "I Remind You That Your Key Has Been Blacklisted!" + Style.RESET_ALL)
+    print(Fore.CYAN + "https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+    exit()
+else:
+    if input_key in keylist:
+        print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
+        print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
+        print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
+        print(Fore.GREEN + "Key Check Done" + Style.RESET_ALL)
+        print(Fore.GREEN + "Your Key Is Fine And Usable, Thank You For Using Axionix Tool" + Style.RESET_ALL)
+        print(Fore.GREEN + "I Repeat That Your Key Is Correct And You Can Use The Tool" + Style.RESET_ALL)
+        print(Fore.CYAN + "https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+        data = {
+            "content": f"Key: Đã Kích Hoạt - {input_key}"
+        }
+        response = requests.post(webhook_url, json=data)
+
+        if response.status_code == 204:
+            print(Fore.GREEN + "Message Sent To Axionix Webhook Successfully." + Style.RESET_ALL) 
+        else:
+            print(Fore.RED + f"An Error Occurred While Sending Message To Axionix Webhook, Status Code Is: {response.status_code}" + Style.RESET_ALL)
+    else:
+        print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
+        print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
+        print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
+        print(Fore.GREEN + "Key Check Done" + Style.RESET_ALL)
+        print(Fore.RED + "Your Key Is Wrong, Please Check And Try Again!" + Style.RESET_ALL)
+        print(Fore.RED + "You Can't Use This Tool, Please Check Key Again Or Buy Key Again!" + Style.RESET_ALL)
+        print(Fore.RED + "I Repeat Your Key Is Wrong!" + Style.RESET_ALL)
+        print(Fore.CYAN + "https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+        exit()
