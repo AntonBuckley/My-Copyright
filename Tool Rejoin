@@ -702,17 +702,17 @@ def kill_roblox_process(package_name):
 
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Launching Roblox Game On Your Device: {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(5)
 
-        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox For {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        time.sleep(20)
+        time.sleep(10)
         
         package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
         update_status_table(package_statuses)
