@@ -333,21 +333,24 @@ def verify_cookie(cookie_value):
 def download_file(url, destination, binary=False):
     try:
         response = requests.get(url, stream=True)
-        if response.status_code == 200:
-            mode = 'wb' if binary else 'w'
-            with open(destination, mode) as file:
-                if binary:
-                    shutil.copyfileobj(response.raw, file)
-                else:
-                    file.write(response.text)
-            print(Fore.GREEN + f"{os.path.basename(destination)} downloaded successfully." + Style.RESET_ALL)
-            return destination
-        else:
-            print(Fore.RED + f"Failed to download {os.path.basename(destination)}." + Style.RESET_ALL)
-            return None
+        response.raise_for_status()  # Ném ngoại lệ nếu mã trạng thái không phải 200
+
+        mode = 'wb' if binary else 'w'
+        with open(destination, mode) as file:
+            if binary:
+                shutil.copyfileobj(response.raw, file)
+            else:
+                file.write(response.text)
+        
+        print(Fore.GREEN + f"{os.path.basename(destination)} Downloaded Successfully." + Style.RESET_ALL)
+        return destination
+
+    except requests.exceptions.HTTPError as http_err:
+        print(Fore.RED + f"HTTP Error Occurred While Downloading: {os.path.basename(destination)}: {http_err}" + Style.RESET_ALL)
     except Exception as e:
-        print(Fore.RED + f"Error downloading {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
-        return None
+        print(Fore.RED + f"Another Error Occurred While Downloading: {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
+    
+    return None
 
 # Function to replace the .ROBLOSECURITY cookie value in Cookies.db using sqlite3
 def replace_cookie_value_in_db(db_path, new_cookie_value):
@@ -386,56 +389,52 @@ def replace_cookie_value_in_db(db_path, new_cookie_value):
 
 def inject_cookies_and_appstorage():
     # Ensure the Google Drive link is correct
-    db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies"  # Keep this as binary
-    appstorage_url = "https://raw.githubusercontent.com/shirooscripts/auto-rj/main/appStorage.json"  # Use this for JSON
+    db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies" 
+    appstorage_url = "https://raw.githubusercontent.com/shirooscripts/auto-rj/main/appStorage.json"
 
     # Download the files correctly
     downloaded_db_path = download_file(db_url, "Cookies.db", binary=True)
     downloaded_appstorage_path = download_file(appstorage_url, "appStorage.json", binary=False)
 
     if not downloaded_db_path or not downloaded_appstorage_path:
-        print(Fore.RED + "Failed to download necessary files. Exiting." + Style.RESET_ALL)
+        print(Fore.RED + "An Error Occurred While Loading Required Files, Exiting." + Style.RESET_ALL)
         return
     
     # Path to cookie.txt file
-    cookie_txt_path = os.path.join(os.getcwd(), "cookie.txt")  # cookie.txt in the same directory as the script
+    cookie_txt_path = os.path.join(os.getcwd(), "cookie.txt") 
     
     # Check if the cookie.txt file exists
     if not os.path.exists(cookie_txt_path):
-        print(Fore.RED + "cookie.txt not found in the current directory!" + Style.RESET_ALL)
+        print(Fore.RED + "cookie.txt File Not Found!" + Style.RESET_ALL)
         return
 
-    # Read cookies from the cookie.txt file
     with open(cookie_txt_path, "r") as file:
         cookies = [line.strip() for line in file.readlines()]
 
-    # Check if there are cookies to inject
     if not cookies:
-        print(Fore.RED + "No cookies found in cookie.txt. Please add your cookies." + Style.RESET_ALL)
+        print(Fore.RED + "Cookie Not Found In cookie.txt File!" + Style.RESET_ALL)
         return
 
     # Get the Roblox packages
     packages = get_roblox_packages()
 
     if len(cookies) > len(packages):
-        print(Fore.RED + "More cookies in cookie.txt than packages available. Please ensure each cookie has a corresponding package." + Style.RESET_ALL)
+        print(Fore.RED + "Please Add Cookies To cookie.txt File Because Package In Your Device Is More Than Cookie In File." + Style.RESET_ALL)
         return
 
-    # Inject each cookie and appStorage.json into its corresponding package
     for idx, package_name in enumerate(packages):
         try:
             if idx < len(cookies):
                 cookie = cookies[idx]
                 
-                # Verify the cookie before injection
-                print(Fore.YELLOW + f"Verifying cookie for {package_name} before injection..." + Style.RESET_ALL)
+                print(Fore.YELLOW + f"Verifying Cookie For {package_name} Before Injection..." + Style.RESET_ALL)
                 if verify_cookie(cookie):
-                    print(Fore.GREEN + f"Cookie for {package_name} is valid!" + Style.RESET_ALL)
+                    print(Fore.GREEN + f"Cookie For {package_name} Is Valid!" + Style.RESET_ALL)
                 else:
-                    print(Fore.RED + f"Cookie for {package_name} is invalid. Skipping injection..." + Style.RESET_ALL)
+                    print(Fore.RED + f"Cookie For {package_name} Is Unvalid. Skipping Injection..." + Style.RESET_ALL)
                     continue
                 
-                print(Fore.GREEN + f"Injecting cookie for {package_name}: {cookie}" + Style.RESET_ALL)
+                print(Fore.GREEN + f"Injecting Cookie For {package_name}: {cookie}" + Style.RESET_ALL)
                 
                 # Paths to the destination directories
                 destination_db_dir = f"/data/data/{package_name}/app_webview/Default/"
@@ -472,7 +471,7 @@ def inject_cookies_and_appstorage():
             
 def get_roblox_packages():
     packages = []
-    for suffix in string.ascii_lowercase:  # Dùng string.ascii_lowercase để lấy các chữ cái từ 'a' đến 'z'
+    for suffix in string.ascii_lowercase:  
         package_name = f"com.roblox.clien{suffix}"
         print(Fore.YELLOW + f"Checking For Roblox Package: {package_name}" + Style.RESET_ALL)
         
@@ -637,76 +636,65 @@ def setup_webhook():
     save_config()
 
 def is_roblox_running(package_name):
-    # Use set comprehension to improve lookup speed and efficiency
     return any(package_name in proc.info['name'].lower() for proc in psutil.process_iter(['name']))
 
 def kill_roblox_processes():
-    print("Killing all Roblox processes...")
+    print(Fore.YELLOW + "Turning Off All Roblox Games Running On Your Device..." + Style.RESET_ALL)
     package_names = get_roblox_packages()
     
     for package_name in package_names:
         kill_roblox_process(package_name)
 
 def kill_roblox_process(package_name):
-    print(f"Killing Roblox process for {package_name}...")
+    print(Fore.YELLOW + f"Turning Off Roblox Game For Package Is: {package_name}..." + Style.RESET_ALL)
     # Using `os.kill` for more control and speed, avoiding unnecessary shell calls
     for proc in psutil.process_iter(['pid', 'name']):
         if package_name in proc.info['name'].lower():
             try:
                 os.kill(proc.info['pid'], 9)  # 9 is SIGKILL
-                print(f"Process {proc.info['name']} (PID: {proc.info['pid']}) killed.")
+                print(Fore.YELLOW + f"Process {proc.info['name']} (PID: {proc.info['pid']}) Killed." + Style.RESET_ALL)
             except Exception as e:
-                print(f"Error killing process {proc.info['name']}: {e}")
+                print(f"An Error Occurred While Closing Roblox Game: {proc.info['name']}: {e}")
     time.sleep(1)  
 
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        # Update the status to indicate Roblox is opening
-        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Launching Roblox Game With Package: {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
-        # Open Roblox (Initial Splash)
         subprocess.run(
             ['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
         )
         
-        # Adjust wait time based on the number of packages (Shorter wait time for fewer packages)
         wait_time = 15 if num_packages >= 6 else 8
         time.sleep(wait_time)
 
-        # Update status to indicate joining Roblox
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
-        # Proceed to launch into Roblox game
         subprocess.run(
             ['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
         )
         
-        # Wait a moment to ensure Roblox has launched
-        time.sleep(20)
+        time.sleep(1)
 
-        # Update the status after successfully joining
-        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
+        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox Game" + Style.RESET_ALL
         update_status_table(package_statuses)
 
     except subprocess.CalledProcessError as e:
-        # Catch specific subprocess errors and handle them
-        package_statuses[package_name]["Status"] = Fore.RED + f"Failed to launch Roblox for {package_name}: {e}" + Style.RESET_ALL
+        package_statuses[package_name]["Status"] = Fore.RED + f"An Error Occurred While Launching Roblox Game For Package: {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Subprocess error details: {e}")
 
     except Exception as e:
-        # Catch all other exceptions
-        package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
+        package_statuses[package_name]["Status"] = Fore.RED + f"An Error Occurred While Launching Roblox Game For Package: {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Error details: {e}")
 
 def check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts):
     try:
-        # Inject Lua script for executor detection (the username is auto-detected in the Lua script)
         detected_executors = detect_and_write_lua_script()
 
         if detected_executors:
@@ -1070,8 +1058,8 @@ def get_hwid(package_name):
 def create_fluxus_bypass_link(hwid, api_key="XqzyaenZishd33axPYPz"):
     return f"https://madkung.vercel.app/fluxus-api?url=https://flux.li/android/external/start.php?HWID={hwid}&api_key={api_key}"
         
-def create_bypass_link(user_id, api_key="shirrobeo"):
-    return f"http://103.65.235.193:8264/api/delta?hwid_link=https://gateway.platoboost.com/a/8?id={user_id}&api_key={api_key}"
+def create_bypass_link(user_id):
+    return f"https://delta-api-11.vercel.app/api/delta?url=https://gateway.platoboost.com/a/8?id={user_id}"
 
 def decrement_time(time_str):
     hours, minutes = map(int, time_str.replace('H', '').replace('M', '').split())
