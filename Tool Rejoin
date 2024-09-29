@@ -763,7 +763,7 @@ def launch_roblox(package_name, server_link, num_packages, package_statuses):
 
         # Open Roblox (Initial Splash)
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(10)  # Adjust wait time based on the number of packages
+        time.sleep(7)  # Adjust wait time based on the number of packages
 
         # Proceed to launch
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
