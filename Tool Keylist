@@ -4,7 +4,7 @@ from colorama import init, Fore, Style
 
 init(autoreset=True)
 
-keylist = ["8hpDT3YQ9jx", "oGYCKKakfxt", "Pi5QXUFHboI", "XMA0Lefr6am", "bIPNTo69sB1", "V7VGNDgO7d9", "clkDhELpYw9", "REvmdO6f9Jt", "mWGNdFxEAwR"]
+keylist = ["8hpDT3YQ9jx", "oGYCKKakfxt", "Pi5QXUFHboI", "XMA0Lefr6am", "bIPNTo69sB1", "V7VGNDgO7d9", "clkDhELpYw9", "REvmdO6f9Jt", "mWGNdFxEAwR", "30b2Ukdjoc8", "gszQouTRfgD"]
 blacklist = ["CAB"]
 webhook_url = "https://discord.com/api/webhooks/1283679695212249151/lxPQpfryEuBskO5BCN1fjHWrWid3tJq_v2KDxeRLkjr3UUJL8X7eq_-V9yHBYFQwO4pP"
 key_file = "AxionixKey.bin"
