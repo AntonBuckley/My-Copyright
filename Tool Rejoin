@@ -159,7 +159,7 @@ def clear_executor_status(username):
                     print(Fore.RED + f"An Error Occurred While Deleting the Status File, Status Code Is: {e}" + Style.RESET_ALL)
             break 
 
-def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=2, max_inactivity_time=5):
+def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=8, max_inactivity_time=8):
     status_file = f"executor_check_{username}.txt"
     retry_timeout = time.time() + max_wait_time 
     active_workspace = None 
@@ -976,8 +976,8 @@ def save_cache():
         print(Fore.RED + f"Error saving cache: {e}" + Style.RESET_ALL)
         
 def check_user_online(user_id):
-    max_retries = 5
-    delay = 1
+    max_retries = 6
+    delay = 3
 
     for attempt in range(max_retries):
         try:
