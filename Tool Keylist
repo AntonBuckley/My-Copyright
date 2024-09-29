@@ -5,7 +5,7 @@ from colorama import init, Fore, Style
 init(autoreset=True)
 
 keylist = ["FreeTrial", "8hpDT3YQ9jx", "oGYCKKakfxt", "Pi5QXUFHboI", "XMA0Lefr6am", "bIPNTo69sB1", "V7VGNDgO7d9", "clkDhELpYw9", "REvmdO6f9Jt", "mWGNdFxEAwR", "30b2Ukdjoc8", "gszQouTRfgD"]
-blacklist = ["CAB"]
+blacklist = ["CAB", "Axionix", "ABC", "123"]
 webhook_url = "https://discord.com/api/webhooks/1283679695212249151/lxPQpfryEuBskO5BCN1fjHWrWid3tJq_v2KDxeRLkjr3UUJL8X7eq_-V9yHBYFQwO4pP"
 key_file = "AxionixKey.bin"
 
@@ -22,7 +22,13 @@ def save_key(key):
 input_key = load_key()
 
 if input_key is None:
+    print(Fore.GREEN + "Reworked Tool From Axionix" + Style.RESET_ALL)
+    print(Fore.GREEN + "Wish You Have The Best Experience" + Style.RESET_ALL)
+    print(Fore.GREEN + "https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+    print(Fore.RED + "I Forbid You From Mocking, Joking, Insulting Or Deobfuscate My Tool" + Style.RESET_ALL)
+    print(Fore.RED + "This Tool Will Be Free For 7 Days, Until October 8, 2024 It Will End Free" + Style.RESET_ALL)
     input_key = input(Fore.YELLOW + "Please Enter Your Key: " + Style.RESET_ALL)
+    print(Fore.CYAN + "If You Haven't Bought The Key, Please Join Discord: https://discord.gg/C6VaVKsapN To Buy Key" + Style.RESET_ALL)
     save_key(input_key)  
 
 if input_key in blacklist:
