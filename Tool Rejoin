@@ -1154,17 +1154,17 @@ def main():
 
         # Dynamic menu options
         menu_options = [
-            "Start Auto Rejoin",
-            "Set User IDs for Each Package",
-            "Same Game ID or Private Server Link",
-            "Different Private Server or Game ID",
-            "Clear User IDs and/or Server Links",
+            "Start Auto Rejoin Roblox Game",
+            "Set User ID For Each Package",
+            "Same Game ID Or Private Server Link",
+            "Different Private Server Or Game ID",
+            "Clear User ID And/Or Private Server Link",
             "List",
-            "Auto Setup User IDs",
-            "Bypass Start",
-            "Same HWID Fluxus",
-            "Set Up Webhook",
-            "Auto Login via Cookie",            
+            "Auto Setup User ID",
+            "Automatic Bypass Key For Fluxus Executor",
+            "Auto Same Hwid For Fluxus Executor",
+            "Set Up Webhook(Maintenance)",
+            "Automatically Login Roblox Account Using Cookies",            
             "Exit"
         ]
 
