@@ -27,7 +27,6 @@ init()
 SERVER_LINKS_FILE = "server_links.txt"
 ACCOUNTS_FILE = "accounts.txt"
 CONFIG_FILE = "config.json"
-TOOL_KEY_FILE = "tool_key.json"
 webhook_url = None
 device_name = None
 interval = None
