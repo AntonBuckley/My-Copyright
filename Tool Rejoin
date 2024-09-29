@@ -199,7 +199,7 @@ def clear_executor_status(username):
                     pass  # Ignore the error silently
             break  # Exit the executor loop once the file is removed
                 
-def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=3, max_inactivity_time=10):
+def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=2, max_inactivity_time=5):
     status_file = f"executor_check_{username}.txt"
     retry_timeout = time.time() + max_wait_time  # Maximum time to wait before rejoining
     active_workspace = None  # Track the valid workspace path once detected
