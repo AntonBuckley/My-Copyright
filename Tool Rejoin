@@ -672,54 +672,62 @@ def setup_webhook():
     threading.Thread(target=send_webhook).start() 
 
 def is_roblox_running(package_name):
-    for proc in psutil.process_iter(['name']):
-        if package_name in proc.info['name'].lower():
-            return True
-    return False
+    try:
+        for proc in psutil.process_iter(['name']):
+            if proc.info['name'] and package_name.lower() in proc.info['name'].lower():
+                return True
+        return False
+    except psutil.Error as e:
+        print(Fore.RED + f"Error checking Roblox process: {e}" + Style.RESET_ALL)
+        return False
 
-# Function to kill Roblox processes
 def kill_roblox_processes():
     print("Killing all Roblox processes...")
     package_names = get_roblox_packages()
     for package_name in package_names:
-        print(f"Trying to kill process for package: {package_name}")
-        # Use pkill to kill processes by package name
-        os.system(f"pkill -f {package_name}")
-    time.sleep(2) 
+        print(Fore.YELLOW + f"Trying to kill process for package: {package_name}" + Style.RESET_ALL)
+        try:
+            subprocess.run(['pkill', '-f', package_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError as e:
+            print(f"Error killing process {package_name}: {e}")
+    time.sleep(2)
 
-# Function to kill a specific Roblox process
 def kill_roblox_process(package_name):
     print(f"Killing Roblox process for {package_name}...")
-    # Use pkill to kill process by package name
-    os.system(f"pkill -f {package_name}")
-    time.sleep(2) 
+    try:
+        subprocess.run(['pkill', '-f', package_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as e:
+        print(f"Error killing process {package_name}: {e}")
+    time.sleep(2)
 
-# Function to launch Roblox
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        # Update the status to indicate Roblox is opening
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
-        # Open Roblox (Initial Splash)
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(15 if num_packages >= 6 else 8)  # Adjust wait time based on the number of packages
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        wait_time = 15 if num_packages >= 6 else 8
+        time.sleep(wait_time)
 
-        # Proceed to launch
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # Wait a moment to ensure Roblox has launched
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
         time.sleep(20)
-        
-        # Update the status after successful join
+
+        # Cập nhật trạng thái sau khi tham gia thành công
         package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
         update_status_table(package_statuses)
 
-    except Exception as e:
-        # Catch all exceptions and log them specifically to avoid "launching failed" messages
+    except subprocess.CalledProcessError as e:
         package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
+        update_status_table(package_statuses)
+        print(f"Error details: {e}")
+
+    except Exception as e:
+        package_statuses[package_name]["Status"] = Fore.RED + f"Unexpected error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Error details: {e}")
 
