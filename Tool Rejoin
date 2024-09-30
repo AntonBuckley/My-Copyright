@@ -412,7 +412,7 @@ def main():
                 print(Fore.RED + "No game ID or private server link set up yet! Please set them up before proceeding." + Style.RESET_ALL)
                 continue
 
-            force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
+            force_rejoin_interval = int(input(Fore.YELLOW + "Enter Required Time To Shut Down/Rejoin Roblox Game(Minute): " + Style.RESET_ALL)) * 60
 
             print(Fore.YELLOW + "Killing Roblox processes..." + Style.RESET_ALL)
             kill_roblox_processes()
