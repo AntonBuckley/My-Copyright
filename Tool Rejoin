@@ -37,6 +37,7 @@ rejoin_lock = Lock()
 
 package_statuses = {}
 username_cache = {}
+username_cache_lock = Lock()
 CACHE_FILE = "username_cache.json"
 cache_save_interval = 600  
 stop_event = threading.Event()
