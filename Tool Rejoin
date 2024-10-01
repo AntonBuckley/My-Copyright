@@ -337,19 +337,19 @@ def verify_cookie(cookie_value):
 
         if response.status_code == 200:
             # The user is authenticated
-            print(Fore.GREEN + "Cookie is valid! User is authenticated." + Style.RESET_ALL)
+            print(Fore.GREEN + "Your Cookies Are Correct, Your User Is Authenticated." + Style.RESET_ALL)
             return True
         elif response.status_code == 401:
             # Unauthorized, the cookie is invalid
-            print(Fore.RED + "Invalid cookie. The user is not authenticated." + Style.RESET_ALL)
+            print(Fore.RED + "Your Cookie Is Wrong, Your User Is Not Authenticated." + Style.RESET_ALL)
             return False
         else:
             # Some other error occurred
-            print(Fore.RED + f"Error verifying cookie: {response.status_code} - {response.text}" + Style.RESET_ALL)
+            print(Fore.RED + f"An Error Occurred While Verifying Cookie, Status Code Is: {response.status_code} - {response.text}" + Style.RESET_ALL)
             return False
 
     except Exception as e:
-        print(Fore.RED + f"Exception occurred while verifying cookie: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Another Error Occurred While Verifying Cookie, Status Code Is: {e}" + Style.RESET_ALL)
         return False
         
 def download_file(url, destination, binary=False):
@@ -362,16 +362,15 @@ def download_file(url, destination, binary=False):
                     shutil.copyfileobj(response.raw, file)
                 else:
                     file.write(response.text)
-            print(Fore.GREEN + f"{os.path.basename(destination)} downloaded successfully." + Style.RESET_ALL)
+            print(Fore.GREEN + f"{os.path.basename(destination)} Downloaded Successfully." + Style.RESET_ALL)
             return destination
         else:
-            print(Fore.RED + f"Failed to download {os.path.basename(destination)}." + Style.RESET_ALL)
+            print(Fore.RED + f"An Error Occurred While Downloading, Status Code Is: {os.path.basename(destination)}." + Style.RESET_ALL)
             return None
     except Exception as e:
-        print(Fore.RED + f"Error downloading {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Another Error Occurred While Downloading, Status Code Is: {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
         return None
 
-# Function to replace the .ROBLOSECURITY cookie value in Cookies.db using sqlite3
 def replace_cookie_value_in_db(db_path, new_cookie_value):
     try:
         conn = sqlite3.connect(db_path)
@@ -399,12 +398,12 @@ def replace_cookie_value_in_db(db_path, new_cookie_value):
 
         conn.commit()
         conn.close()
-        print(Fore.GREEN + "Cookie value replaced successfully in the database!" + Style.RESET_ALL)
+        print(Fore.GREEN + "Cookie Value Replaced Successfully In The Database!" + Style.RESET_ALL)
 
     except sqlite3.OperationalError as e:
-        print(Fore.RED + f"Database error during cookie replacement: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Database Error During Cookie Replacement: {e}" + Style.RESET_ALL)
     except Exception as e:
-        print(Fore.RED + f"Error replacing cookie value in database: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Error Replacing Cookie Value In database: {e}" + Style.RESET_ALL)
 
 def inject_cookies_and_appstorage():
     # Ensure the Google Drive link is correct
