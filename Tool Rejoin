@@ -933,7 +933,6 @@ def get_server_link(package_name, server_links):
 def get_username_from_id(user_id):
     return get_username(user_id) or user_id
     
-# Function to get username from user ID
 def get_username(user_id):
     retry_attempts = 2
     for attempt in range(retry_attempts):
@@ -948,10 +947,9 @@ def get_username(user_id):
                 save_username(user_id, username)
                 return username
         except requests.exceptions.RequestException as e:
-            print(Fore.RED + f"Attempt {attempt + 1} failed for Roblox Users API: {e}" + Style.RESET_ALL)
+            print(Fore.RED + f"API To Get Username From User ID Has Been Broken, Status Code Is: {e}" + Style.RESET_ALL)
             time.sleep(2 ** attempt)  # Exponential backoff
 
-    # Fallback to RoProxy API
     for attempt in range(retry_attempts):
         try:
             url = f"https://users.roproxy.com/v1/users/{user_id}"
@@ -964,12 +962,11 @@ def get_username(user_id):
                 save_username(user_id, username)
                 return username
         except requests.exceptions.RequestException as e:
-            print(Fore.RED + f"Attempt {attempt + 1} failed for RoProxy API: {e}" + Style.RESET_ALL)
-            time.sleep(2 ** attempt)  # Exponential backoff
+            print(Fore.RED + f"API To Get Username From User ID Has Been Broken, Status Code Is: {e}" + Style.RESET_ALL)
+            time.sleep(2 ** attempt) 
 
     return "Unknown"
 
-# Example of saving the username in a persistent storage
 def save_username(user_id, username):
     try:
         if not os.path.exists("usernames.json"):
@@ -986,16 +983,15 @@ def save_username(user_id, username):
                 json.dump(data, file)
                 file.truncate()
     except (IOError, json.JSONDecodeError) as e:
-        print(Fore.RED + f"Error saving username: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"An Error Occurred While Saving Username: {e}" + Style.RESET_ALL)
 
-# Example of loading the username from persistent storage
 def load_saved_username(user_id):
     try:
         with open("usernames.json", "r") as file:
             data = json.load(file)
             return data.get(user_id)
     except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
-        print(Fore.RED + f"Error loading username: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"An Error Occurred While Loading Username: {e}" + Style.RESET_ALL)
         return None
     
 def load_cache():
@@ -1011,7 +1007,7 @@ def save_cache():
             json.dump(username_cache, f)
         os.replace(temp_file, CACHE_FILE)  # Atomic move to replace the file
     except IOError as e:
-        print(Fore.RED + f"Error saving cache: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"An Error Occurred While Saving The Cache: {e}" + Style.RESET_ALL)
 
 def check_user_online(user_id):
     max_retries = 3
