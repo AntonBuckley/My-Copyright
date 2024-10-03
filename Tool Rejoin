@@ -319,32 +319,19 @@ def get_username(user_id):
         return None
 
 def check_user_online(user_id):
-    while True:
-        try:
-            url = "https://presence.roblox.com/v1/presence/users"
-            headers = {'Content-Type': 'application/json'}
-            
-            response = requests.post(url, headers=headers, json={"userIds": [user_id]})
-            response.raise_for_status()
-            
-            data = response.json()
-            presence_type = data["userPresences"][0]["userPresenceType"]
-            print(f"User {user_id} presence type: {presence_type}")
-            
-        except requests.exceptions.HTTPError as http_err:
-            print(Fore.RED + f"HTTP Error Occurred: {http_err}" + Style.RESET_ALL)
-        except requests.exceptions.ConnectionError as conn_err:
-            print(Fore.RED + f"An Error Occurred While Connecting: {conn_err}" + Style.RESET_ALL)
-        except requests.exceptions.Timeout as timeout_err:
-            print(Fore.RED + f"Timeout Error Occurred: {timeout_err}" + Style.RESET_ALL)
-        except requests.exceptions.RequestException as req_err:
-            print(Fore.RED + f"Error During Requests: {req_err}" + Style.RESET_ALL)
-        except (KeyError, IndexError) as json_err:
-            print(Fore.RED + f"Error Parsing JSON Response: {json_err}" + Style.RESET_ALL)
-        except Exception as e:
-            print(Fore.RED + f"Unexpected Error Occurred: {e}" + Style.RESET_ALL)
-
-        time.sleep(15)
+    try:
+        url = "https://presence.roblox.com/v1/presence/users"
+        headers = {'Content-Type': 'application/json'}
+        body = json.dumps({"userIds": [user_id]})
+        response = requests.post(url, headers=headers, data=body)
+        response.raise_for_status()
+        
+        data = response.json()
+        presence_type = data["userPresences"][0]["userPresenceType"]
+        return presence_type
+    except Exception as e:
+        print(f"Error checking online status: {e}")
+        return None
 
 def create_bypass_link(hwid_link, api_key="toolkey"):
     return f"http://103.65.235.193:8264/api/fluxus?hwid_link={hwid_link}&api_key={api_key}"
