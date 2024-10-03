@@ -207,7 +207,7 @@ def kill_roblox_process(package_name):
     print(Fore.YELLOW + f"In Progress Shutdown Game Has Package Is: {package_name}..." + Style.RESET_ALL)
     try:
         subprocess.run(['pkill', '-f', package_name], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(1)
+        time.sleep(5)
     except subprocess.CalledProcessError as e:
         print(Fore.RED + f"An Error Occurred While Closing Roblox Game With Package Is: {package_name}: {e}" + Style.RESET_ALL)
 
@@ -216,11 +216,11 @@ def launch_roblox(package_name, server_link, num_packages):
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(Fore.GREEN + f"Roblox Game With Package In Progress: {package_name}..." + Style.RESET_ALL)
        
-        time.sleep(1)
+        time.sleep(5)
 
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(Fore.YELLOW + f"In Game For Package: {package_name}..." + Style.RESET_ALL)
-        time.sleep(1)  
+        time.sleep(5)  
     except subprocess.CalledProcessError as e:
         print(Fore.RED + f"An Error Occurred While Launching Roblox Game With Package As: {package_name}: {e}" + Style.RESET_ALL)
 
@@ -385,7 +385,7 @@ def bypass_fluxus(accounts):
             else:
                 print(Fore.RED + f"{package_name}: Hwid File Not Found On Your Device!" + Style.RESET_ALL)
         
-        time.sleep(10)  
+        time.sleep(5)  
         
     return bypassed_results
 	
@@ -417,7 +417,7 @@ def main():
             print(Fore.YELLOW + "Killing Roblox processes..." + Style.RESET_ALL)
             kill_roblox_processes()
             print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
-            time.sleep(1)
+            time.sleep(5)
 
             num_packages = len(server_links)  # Count the number of Roblox packages
 
@@ -465,9 +465,9 @@ def main():
                             launch_roblox(package_name, server_link, num_packages)
 
                     # Introduce a delay between checking each user to prevent spamming
-                    time.sleep(1)  # Adjust the delay time as needed
+                    time.sleep(5)  # Adjust the delay time as needed
 
-                time.sleep(1)  
+                time.sleep(5)  
                 
                 # Check if the script has been running for the specified interval
                 if time.time() - start_time >= force_rejoin_interval:
@@ -475,7 +475,7 @@ def main():
                     kill_roblox_processes()
                     start_time = time.time()  # Reset start time
                     print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
-                    time.sleep(1)
+                    time.sleep(5)
                     # Rejoin all servers after killing the processes
                     for package_name, server_link in server_links:
                         launch_roblox(package_name, server_link, num_packages) 
