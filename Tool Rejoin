@@ -94,7 +94,7 @@ def launch_roblox(package_name, server_link, num_packages):
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(wait_time)
 
-        print(f"Joining Roblox for {package_name}...")
+        print(Fore.YELLOW + f"Joining Roblox For {package_name}..." + Style.RESET_ALL)
         subprocess.run(['am', 'start', '-n', protocol_launch_activity, '-d', server_link], 
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(15)
