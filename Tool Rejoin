@@ -497,62 +497,54 @@ def get_roblox_packages():
     return packages
 
 def is_roblox_running(package_name):
-    package_name = package_name.lower()  
-    try:
-        return any(package_name in proc.info['name'].lower() for proc in psutil.process_iter(attrs=['name']))
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
-        return False  
+    for proc in psutil.process_iter(['name']):
+        if package_name in proc.info['name'].lower():
+            return True
+    return False
 
-def kill_process(package_name):
-    try:
-        print(Fore.YELLOW + f"Roblox Game Shutdown In Progress Package Is: {package_name}..." + Style.RESET_ALL)
-        result = os.system(f"pkill -f {package_name}")
-        if result == 0:
-            print(Fore.GREEN + f"Successfully Shutdown Roblox Game With Package Is: {package_name}" + Style.RESET_ALL)
-        else:
-            print(Fore.RED + f"An Error Occurred While Shutting Down Roblox Game With Package Is: {package_name}" + Style.RESET_ALL)
-    except Exception as e:
-        print(Fore.RED + f"Another Error Occurred When Shutting Down Roblox Game With Package Is: {package_name}, Status Code Is: {e}" + Style.RESET_ALL)
-
+# Function to kill Roblox processes
 def kill_roblox_processes():
-    print(Fore.YELLOW + "Roblox Shutdown In Progress On Your Device..." + Style.RESET_ALL)
+    print("Killing all Roblox processes...")
     package_names = get_roblox_packages()
     for package_name in package_names:
-        kill_process(package_name)
-    time.sleep(2)
+        print(f"Trying to kill process for package: {package_name}")
+        # Use pkill to kill processes by package name
+        os.system(f"pkill -f {package_name}")
+    time.sleep(2) 
 
+# Function to kill a specific Roblox process
+def kill_roblox_process(package_name):
+    print(f"Killing Roblox process for {package_name}...")
+    # Use pkill to kill process by package name
+    os.system(f"pkill -f {package_name}")
+    time.sleep(2) 
+
+# Function to launch Roblox
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        package_statuses[package_name]["Status"] = (
-            Fore.YELLOW + f"In Progress Open Roblox Game Package Is: {package_name}..." + Style.RESET_ALL
-        )
+        # Update the status to indicate Roblox is opening
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
-        splash_activity = f'{package_name}/com.roblox.client.startup.ActivitySplash'
-        launch_activity = f'{package_name}/com.roblox.client.ActivityProtocolLaunch'
-        wait_time = 5 if num_packages >= 6 else 8
+        # Open Roblox (Initial Splash)
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(15 if num_packages >= 6 else 8)  # Adjust wait time based on the number of packages
 
-        subprocess.run(['am', 'start', '-n', splash_activity, '-d', server_link], 
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(wait_time)
-
-        package_statuses[package_name]["Status"] = (
-            Fore.YELLOW + f"In Progress In Game For Package Is: {package_name}..." + Style.RESET_ALL
-        )
+        # Proceed to launch
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
-
-        subprocess.run(['am', 'start', '-n', launch_activity, '-d', server_link], 
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        time.sleep(5)
-
-        package_statuses[package_name]["Status"] = Fore.GREEN + "Successfully Joined The Game" + Style.RESET_ALL
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Wait a moment to ensure Roblox has launched
+        time.sleep(20)
+        
+        # Update the status after successful join
+        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
         update_status_table(package_statuses)
 
     except Exception as e:
-        package_statuses[package_name]["Status"] = (
-            Fore.RED + f"An Error Occurred While Entering Roblox Game With Package As: {package_name}, Status Code Is: {str(e)}" + Style.RESET_ALL
-        )
+        # Catch all exceptions and log them specifically to avoid "launching failed" messages
+        package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Error details: {e}")
 
@@ -840,38 +832,34 @@ def save_cache():
         print(Fore.RED + f"Error saving cache: {e}" + Style.RESET_ALL)
         
 def check_user_online(user_id):
-    max_retries = 10
-    delay = 5
-    primary_url = "https://presence.roblox.com/v1/presence/users"
-    headers = {'Content-Type': 'application/json'}
-    body = json.dumps({"userIds": [user_id]})
+    max_retries = 3
+    delay = 2
 
     for attempt in range(max_retries):
         try:
+            primary_url = "https://presence.roblox.com/v1/presence/users"
+            headers = {'Content-Type': 'application/json'}
+            body = json.dumps({"userIds": [user_id]})
             with requests.Session() as session:
-                response = session.post(primary_url, headers=headers, data=body, timeout=7)
-                response.raise_for_status()
-                
-                user_presence = response.json().get("userPresences", [{}])[0]
-                presence_type = user_presence.get("userPresenceType")
-                last_location = user_presence.get("lastLocation")
+                primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
+            primary_response.raise_for_status()
+            primary_data = primary_response.json()
+            primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
+            primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
 
-                if last_location == "Website":
-                    print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
-                    presence_type = 0  
+            if primary_last_location == "Website":
+                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
+                primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
 
-                return presence_type, last_location
+            return primary_presence_type, primary_last_location
 
         except requests.exceptions.RequestException as e:
             print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
             if attempt < max_retries - 1:
                 time.sleep(delay)
                 delay *= 2  # Exponential backoff
-        except (json.JSONDecodeError, IndexError, KeyError) as e:
-            print(Fore.RED + f"Data parsing error for user {user_id}: {e}" + Style.RESET_ALL)
-            return None, None
-
-    return None, None
+            else:
+                return None, None
 
 def get_hwid_file_path(package_name):
     # Specify the directory
