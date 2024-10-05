@@ -832,7 +832,7 @@ def save_cache():
         print(Fore.RED + f"Error saving cache: {e}" + Style.RESET_ALL)
         
 def check_user_online(user_id):
-    max_retries = 3
+    max_retries = 10
     delay = 2
 
     for attempt in range(max_retries):
