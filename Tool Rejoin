@@ -321,9 +321,6 @@ def verify_cookie(cookie_value):
             'Connection': 'keep-alive'
         }
 
-        # Introduce a small delay to mimic a more natural request pattern
-        time.sleep(1)
-
         # Make a GET request to the authentication endpoint
         response = requests.get('https://users.roblox.com/v1/users/authenticated', headers=headers)
 
@@ -502,43 +499,40 @@ def is_roblox_running(package_name):
             return True
     return False
 
-# Function to kill Roblox processes
 def kill_roblox_processes():
-    print("Killing all Roblox processes...")
+    print(Fore.YELLOW + "In Progress Turning Off All Roblox Games On Your Device..." + Style.RESET_ALL)
     package_names = get_roblox_packages()
     for package_name in package_names:
-        print(f"Trying to kill process for package: {package_name}")
-        # Use pkill to kill processes by package name
-        os.system(f"pkill -f {package_name}")
-    time.sleep(2) 
+        print(Fore.YELLOW + f"Roblox Game Shutdown In Progress For Package Is: {package_name}" + Style.RESET_ALL)
+        try:
+            for proc in psutil.process_iter(['name']):
+                if package_name in proc.info['name'].lower():
+                    proc.terminate()  
+                    print(Fore.RED + f"Terminated Process: {proc.info['name']}" + Style.RESET_ALL)
+        except Exception as e:
+            print(Fore.RED + f"An Error Occurred While Shutting Down Roblox Game: {package_name}, Status Code Is: {e}" + Style.RESET_ALL)
 
-# Function to kill a specific Roblox process
 def kill_roblox_process(package_name):
-    print(f"Killing Roblox process for {package_name}...")
-    # Use pkill to kill process by package name
-    os.system(f"pkill -f {package_name}")
-    time.sleep(2) 
+    print(Fore.RED + f"Turning Off Roblox Game For Package Is: {package_name}..." + Style.RESET_ALL)
+    try:
+        for proc in psutil.process_iter(['name']):
+            if package_name in proc.info['name'].lower():
+                proc.terminate()
+                print(Fore.RED + f"Terminated Process: {proc.info['name']}" + Style.RESET_ALL)
+    except Exception as e:
+        print(Fore.RED + f"An Error Occurred While Shutting Down Roblox Game: {package_name}, Status Code Is: {e}" + Style.RESET_ALL)
 
-# Function to launch Roblox
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        # Update the status to indicate Roblox is opening
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
 
-        # Open Roblox (Initial Splash)
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(15 if num_packages >= 6 else 8)  # Adjust wait time based on the number of packages
 
-        # Proceed to launch
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        # Wait a moment to ensure Roblox has launched
-        time.sleep(20)
-        
-        # Update the status after successful join
         package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
         update_status_table(package_statuses)
 
@@ -564,7 +558,6 @@ def check_executor_and_rejoin(package_name, username, package_statuses, server_l
                     package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
                     executor_loaded = True
                     break
-                time.sleep(10)
 
             # If executor didn't load within the timeout, rejoin
             if not executor_loaded:
@@ -574,7 +567,6 @@ def check_executor_and_rejoin(package_name, username, package_statuses, server_l
 
                 # Rejoin by killing the current Roblox process and relaunching
                 kill_roblox_process(package_name)
-                time.sleep(2)
                 launch_roblox(package_name, server_link, num_packages, package_statuses)
                 check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts)
         else:
@@ -614,13 +606,8 @@ def background_executor_monitor(package_name, username, package_statuses, server
                 with rejoin_lock:
                     # Rejoin by killing the current Roblox process and relaunching
                     kill_roblox_process(package_name)
-                    time.sleep(5)  # Grace period before relaunching
                     launch_roblox(package_name, server_link, num_packages, package_statuses)
                     
-                    # Wait another 30 seconds before checking executor status after relaunch
-                    time.sleep(120)
-
-                # Check the executor status again after relaunch
                 if check_executor_status(username, continuous=False):
                     # Reset retry count if executor successfully loaded
                     retry_count = 0
@@ -631,7 +618,6 @@ def background_executor_monitor(package_name, username, package_statuses, server
                     update_status_table(package_statuses)
 
             # Wait before the next check
-            time.sleep(30)
     except Exception as e:
         package_statuses[package_name]["Status"] = Fore.RED + f"Error in background monitor: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
@@ -832,8 +818,8 @@ def save_cache():
         print(Fore.RED + f"Error saving cache: {e}" + Style.RESET_ALL)
         
 def check_user_online(user_id):
-    max_retries = 10
-    delay = 2
+    max_retries = 1
+    delay = 1
 
     for attempt in range(max_retries):
         try:
@@ -883,7 +869,6 @@ def get_hwid_file_path(package_name):
         print(Fore.RED + f"Error retrieving HWID file path: {e}" + Style.RESET_ALL)
         return None
         
-# Function to get HWID for Fluxus
 def get_hwid(package_name):
     # Specify the directory
     directory = f"/data/data/{package_name}/app_assets/content/"
@@ -1056,9 +1041,7 @@ def main():
 
             update_status_table(package_statuses)
 
-            # Kill Roblox processes and wait for 5 seconds
             kill_roblox_processes()
-            time.sleep(5)
 
             num_packages = len(server_links)
 
@@ -1088,7 +1071,6 @@ def main():
                             package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                             update_status_table(package_statuses)
                             kill_roblox_process(package_name)
-                            time.sleep(2)
                             launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                 except Exception as e:
@@ -1126,14 +1108,12 @@ def main():
                                     package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                     update_status_table(package_statuses)
                                     kill_roblox_process(package_name)
-                                    time.sleep(2)
                                     launch_roblox(package_name, server_link, num_packages, package_statuses)
                                     
                             else:
                                 if not is_roblox_running(package_name):
                                     package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
                                     kill_roblox_process(package_name)
-                                    time.sleep(2)
                                     launch_roblox(package_name, server_link, num_packages, package_statuses)
                                     
                                     # Check executor status after relaunch
@@ -1141,14 +1121,12 @@ def main():
                                         print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
                                         package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                         kill_roblox_process(package_name)
-                                        time.sleep(2)
                                         launch_roblox(package_name, server_link, num_packages, package_statuses)
                                     
                                 else:
                                     if last_location_current == "Website":
                                         package_statuses[package_name]["Status"] = Fore.RED + "On Website, Rejoining" + Style.RESET_ALL
                                         kill_roblox_process(package_name)
-                                        time.sleep(2)
                                         launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                                         # Check executor status after relaunch
@@ -1157,7 +1135,6 @@ def main():
                                             package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                             update_status_table(package_statuses)
                                             kill_roblox_process(package_name)
-                                            time.sleep(2)
                                             launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                                         # If executor loaded successfully after relaunch
@@ -1168,7 +1145,6 @@ def main():
                                         package_statuses[package_name]["Status"] = Fore.YELLOW + "Not In-Game, Recently Active" + Style.RESET_ALL
 
                             update_status_table(package_statuses)
-                            time.sleep(25)  # Adjust the delay time as needed
 
                         except Exception as e:
                             print(Fore.RED + f"Error during rejoin process for {package_name}: {e}" + Style.RESET_ALL)
@@ -1180,7 +1156,6 @@ def main():
                         kill_roblox_processes()
                         start_time = current_time
                         print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
-                        time.sleep(5)
                         for package_name, server_link in server_links:
                             try:
                                 package_statuses[package_name]["Status"] = Fore.RED + "Rejoining" + Style.RESET_ALL
@@ -1192,7 +1167,6 @@ def main():
                                     print(f"Executor did not load for {package_name} (username: {username}) after rejoin. Rejoining...")
                                     package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                     kill_roblox_process(package_name)
-                                    time.sleep(2)
                                     launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                                 package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
@@ -1201,11 +1175,8 @@ def main():
 
                         update_status_table(package_statuses)
 
-                    time.sleep(90)
-
                 except Exception as e:
                     print(Fore.RED + f"Critical error in auto rejoin loop: {e}" + Style.RESET_ALL)
-                    time.sleep(60)
                     continue
             
         elif setup_type == "2":
@@ -1429,7 +1400,6 @@ def main():
             print("Killing Roblox processes...")
             kill_roblox_processes()
             print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
-            time.sleep(5)
             num_packages = len(server_links)
 
             # Launch Roblox and check executor for each package
@@ -1457,7 +1427,6 @@ def main():
                             package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                             update_status_table(package_statuses)
                             kill_roblox_process(package_name)
-                            time.sleep(2)
                             launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                 except Exception as e:
@@ -1487,14 +1456,12 @@ def main():
                                 package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                 update_status_table(package_statuses)
                                 kill_roblox_process(package_name)
-                                time.sleep(2)
                                 launch_roblox(package_name, server_link, num_packages, package_statuses)
                                 
                         else:
                             if not is_roblox_running(package_name):
                                 package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
                                 kill_roblox_process(package_name)
-                                time.sleep(2)
                                 launch_roblox(package_name, server_link, num_packages, package_statuses)
                                 
                                 # Check executor status after relaunch
@@ -1502,7 +1469,6 @@ def main():
                                     print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
                                     package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                     kill_roblox_process(package_name)
-                                    time.sleep(2)
                                     launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                                 # If executor loaded successfully after relaunch
@@ -1510,7 +1476,6 @@ def main():
                                     if last_location_current == "Website":
                                         package_statuses[package_name]["Status"] = Fore.RED + "On Website, Rejoining" + Style.RESET_ALL
                                         kill_roblox_process(package_name)
-                                        time.sleep(2)
                                         launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                                         # Check executor status after relaunch
@@ -1519,7 +1484,6 @@ def main():
                                             package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                             update_status_table(package_statuses)
                                             kill_roblox_process(package_name)
-                                            time.sleep(2)
                                             launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                                         # If executor loaded successfully after relaunch
@@ -1530,7 +1494,6 @@ def main():
                                         package_statuses[package_name]["Status"] = Fore.YELLOW + "Not In-Game, Recently Active" + Style.RESET_ALL
 
                         update_status_table(package_statuses)
-                        time.sleep(25)  # Adjust the delay time as needed
 
                     if executor_choice == "1":  # Delta
                         # Check remaining time and rebypass if needed
@@ -1549,14 +1512,12 @@ def main():
                         bypass_results = bypass_user_ids(accounts, "2")  # No need to pass minutes_left_dict
                         last_bypass_time = current_time
 
-                    time.sleep(90)  # Wait 90 seconds before the next loop iteration
 
                     if current_time - start_time >= force_rejoin_interval:
                         print("Force killing Roblox processes due to time limit.")
                         kill_roblox_processes()
                         start_time = current_time
                         print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
-                        time.sleep(5)
                         for package_name, server_link in server_links:
                             try:
                                 package_statuses[package_name]["Status"] = Fore.RED + "Rejoining" + Style.RESET_ALL
@@ -1568,7 +1529,6 @@ def main():
                                     print(f"Executor did not load for {package_name} (username: {username}) after rejoin. Rejoining...")
                                     package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                     kill_roblox_process(package_name)
-                                    time.sleep(2)
                                     launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                                 package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
@@ -1579,7 +1539,6 @@ def main():
 
             except Exception as e:
                 print(Fore.RED + f"Critical error in bypass process: {e}" + Style.RESET_ALL)
-                time.sleep(60)
                 continue
             
         elif setup_type == "9":
