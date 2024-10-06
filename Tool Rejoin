@@ -5,6 +5,7 @@ import time
 import subprocess
 import asyncio
 import re
+import sqlite3
 import aiohttp
 import shutil
 import threading
