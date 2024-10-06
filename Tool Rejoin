@@ -92,7 +92,7 @@ def launch_roblox(package_name, server_link, num_packages):
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(Fore.YELLOW + f"In Progress Opening Roblox Game For: {package_name}..." + Style.RESET_ALL)
         
-        time.sleep(15 if num_packages >= 6 else 8)  
+        time.sleep(15 if num_packages >= 6 else 5)
 
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(Fore.YELLOW + f"In Progress Joining Roblox Game For: {package_name}..." + Style.RESET_ALL)
@@ -441,12 +441,11 @@ def main():
     print_header()
     
     while True:
-        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Roblox Account Login Using Cookie\n9. Bypass Fluxus\n10. Same Hwid Fluxus\n11. Exit\nPlease Enter Your Choice: " + Style.RESET_ALL) 
+        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Roblox Account Login Using Cookie\n9. Exit\nPlease Enter Your Choice: " + Style.RESET_ALL) 
         
-        if setup_type == "1" or setup_type == "9": 
-            if setup_type == "9":
-                accounts = load_accounts()
-                bypass_fluxus(accounts)  
+        if setup_type == "1": 
+            accounts = load_accounts()
+            bypass_fluxus(accounts)  
                 
             server_links = load_server_links()
             accounts = load_accounts() 
@@ -621,26 +620,7 @@ def main():
             inject_cookies_and_appstorage()
             input(Fore.GREEN + "\nPress Enter To Exit..." + Style.RESET_ALL) 
 
-        elif setup_type == "10":
-            new_hwid = input("Enter the new HWID you want to set for all Fluxus packages: ")
-
-            packages = get_roblox_packages()
-
-            for package_name in packages:
-                hwid_file_path = get_hwid_file_path(package_name)
-                if hwid_file_path:
-                    try:
-                        with open(hwid_file_path, "w") as file:
-                            file.write(new_hwid)
-                        print(Fore.GREEN + f"HWID for {package_name} successfully updated to {new_hwid}" + Style.RESET_ALL)
-                    except Exception as e:
-                        print(Fore.RED + f"Error updating HWID for {package_name}: {e}" + Style.RESET_ALL)
-                else:
-                    print(Fore.RED + f"Failed to find HWID file for {package_name}. Skipping." + Style.RESET_ALL)
-
-            input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL)
-
-        elif setup_type == "11":
+        elif setup_type == "9":
             global stop_webhook_thread
             stop_webhook_thread = True 
             break 
