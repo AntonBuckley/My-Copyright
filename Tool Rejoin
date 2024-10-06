@@ -6,6 +6,7 @@ import subprocess
 import asyncio
 import re
 import aiohttp
+import shutil
 import threading
 import psutil
 import uuid
@@ -404,7 +405,7 @@ def main():
     print_header()
     
     while True:
-        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Exit\n9. Bypass Fluxus\nEnter Your Choice: " + Style.RESET_ALL) 
+        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Roblox Account Login Using Cookie\n9. Bypass Fluxus\n10. Exit\nPlease Enter Your Choice: " + Style.RESET_ALL) 
         
         if setup_type == "1" or setup_type == "9": 
             if setup_type == "9":
@@ -584,7 +585,7 @@ def main():
             inject_cookies_and_appstorage()
             input(Fore.GREEN + "\nPress Enter To Exit..." + Style.RESET_ALL) 
 
-        elif setup_type == "9":
+        elif setup_type == "10":
             global stop_webhook_thread
             stop_webhook_thread = True 
             break 
