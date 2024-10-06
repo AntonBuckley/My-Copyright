@@ -198,36 +198,43 @@ def check_user_online(user_id):
         print(f"Error checking online status: {e}")
         return None
 
-def create_bypass_link(user_id, api_key="shirooapikeyreal"):
-    return f"http://45.90.13.151:6122/api/bypass?link=https://gateway.platoboost.com/a/8?id={user_id}&api_key={api_key}"
+def create_bypass_link(hwid_link, api_key="XqzyaenZishd33axPYPz"):
+    return f"https://madkung.vercel.app/fluxus-api?url={hwid_link}&api_key={api_key}"
 
-def bypass_user_ids(accounts):
+def bypass_fluxus(accounts):
     bypassed_results = []
     for package_name, user_id in accounts:
-        bypass_link = create_bypass_link(user_id)
-        username = get_username(user_id) 
-        
-        # Sending request to the API
-        try:
-            response = requests.get(bypass_link)
-            if response.status_code == 200:
-                bypassed_results.append((package_name, response.json()))  # Assuming the response is in JSON format
-                print(Fore.GREEN + f"{username}: Bypass successful - {response.json()}" + Style.RESET_ALL)
-            else:
-                print(Fore.RED + f"{username}: Bypass failed with status code {response.status_code}" + Style.RESET_ALL)
-        except Exception as e:
-            print(Fore.RED + f"{username}: Error - {str(e)}" + Style.RESET_ALL)
-
+        fluxus_hwid_path = f"/data/data/{package_name}/app_assets/content/"
+        files = os.listdir(fluxus_hwid_path)
+        hwid_file = files[0] if files else None
+        if hwid_file:
+            with open(os.path.join(fluxus_hwid_path, hwid_file), 'r') as file:
+                hwid = file.read().strip()
+            hwid_link = f"https://flux.li/android/external/start.php?HWID={hwid}"
+            bypass_link = create_bypass_link(hwid_link)
+            username = get_username(user_id) or user_id
+            try:
+                response = requests.get(bypass_link)
+                if response.status_code == 200:
+                    bypassed_results.append((package_name, response.json()))
+                    print(Fore.GREEN + f"{username}: Fluxus bypass thành công - {response.json()}" + Style.RESET_ALL)
+                else:
+                    print(Fore.RED + f"{username}: Fluxus bypass thất bại, mã trạng thái: {response.status_code}" + Style.RESET_ALL)
+            except Exception as e:
+                print(Fore.RED + f"{username}: Lỗi Fluxus bypass: {str(e)}" + Style.RESET_ALL)
     return bypassed_results
 	
-# Main function to handle auto rejoin
 def main():
     print_header()
     
     while True:
-        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Exit\nEnter Your Choice: " + Style.RESET_ALL) 
+        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Exit\n9. Bypass Fluxus\nEnter Your Choice: " + Style.RESET_ALL) 
         
-        if setup_type == "1":
+        if setup_type == "1" or setup_type == "9": 
+            if setup_type == "9":
+                accounts = load_accounts()
+                bypass_fluxus(accounts)  
+                
             server_links = load_server_links()
             accounts = load_accounts() 
 
@@ -240,12 +247,12 @@ def main():
 
             force_rejoin_interval = int(input(Fore.CYAN + "Please Enter Required Time To Shut Down And Restart Roblox Game(Minute): " + Style.RESET_ALL)) * 60
 
-            print("Killing Roblox processes...")
+            print(Fore.YELLOW + "In Progress Turning Off All Roblox Games On Your Device..." + Style.RESET_ALL)
             kill_roblox_processes()
             print(Fore.YELLOW + "Please Wait 5 Seconds To Restart Roblox Game..." + Style.RESET_ALL)
             time.sleep(5)
 
-            num_packages = len(server_links)  # Count the number of Roblox packages
+            num_packages = len(server_links)  
 
             for package_name, server_link in server_links:
                 launch_roblox(package_name, server_link, num_packages)
@@ -258,14 +265,14 @@ def main():
                         print(f"Retrieving user ID for username: {user_id}...")
                         user_id = asyncio.run(get_user_id(user_id))
                         if user_id is None:
-                            print(Fore.RED + "Failed to retrieve user ID. Please enter the user ID manually." + Style.RESET_ALL)
-                            user_id = input("Enter the user ID: ")
+                            print(Fore.RED + "User ID Unable To Find, Please Enter Manually!" + Style.RESET_ALL)
+                            user_id = input(Fore.CYAN + "Please Enter Your User ID: " + Style.RESET_ALL)
 
                     username = get_username(user_id) or user_id
 
                     presence_type = check_user_online(user_id)
 
-                    if presence_type == 2:  # InGame
+                    if presence_type == 2: 
                         print(Fore.GREEN + f"{username} ({user_id}) is currently in-game." + Style.RESET_ALL)
                     else:
                         print(Fore.RED + f"{username} ({user_id}) is offline or in another status. Checking again..." + Style.RESET_ALL)
@@ -279,7 +286,7 @@ def main():
                                 break
                             else:
                                 print(Fore.YELLOW + f"Attempt {attempt + 1}/{max_retries}: {username} ({user_id}) is still offline. Retrying in {retry_interval} seconds..." + Style.RESET_ALL)
-                                time.sleep(retry_interval)  # Delay between checks
+                                time.sleep(retry_interval) 
 
                         if presence_type != 2:  # If the user was offline in all checks
                             print(Fore.RED + f"{username} ({user_id}) is offline. Rejoining..." + Style.RESET_ALL)
@@ -388,7 +395,7 @@ def main():
             print(Fore.GREEN + "User IDs saved from appStorage.json!" + Style.RESET_ALL)
 
             # Prompt for server link
-            server_link = input("Enter the game ID or private server link: ")
+            server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
             formatted_link = format_server_link(server_link)
 
             if formatted_link:
