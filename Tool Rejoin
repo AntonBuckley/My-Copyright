@@ -92,7 +92,7 @@ def launch_roblox(package_name, server_link, num_packages):
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(Fore.YELLOW + f"In Progress Opening Roblox Game For: {package_name}..." + Style.RESET_ALL)
         
-        time.sleep(15 if num_packages >= 6 else 5)
+        time.sleep(15 if num_packages >= 6 else 8)  
 
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(Fore.YELLOW + f"In Progress Joining Roblox Game For: {package_name}..." + Style.RESET_ALL)
@@ -441,11 +441,10 @@ def main():
     print_header()
     
     while True:
-        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Roblox Account Login Using Cookie\n9. Exit\nPlease Enter Your Choice: " + Style.RESET_ALL) 
+        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Roblox Account Login Using Cookie\n9. Bypass Fluxus\n10. Same Hwid Fluxus\n11. Exit\nPlease Enter Your Choice: " + Style.RESET_ALL) 
         
         if setup_type == "1": 
-            accounts = load_accounts()
-            bypass_fluxus(accounts)  
+            accounts = load_accounts() 
                 
             server_links = load_server_links()
             accounts = load_accounts() 
