@@ -4,15 +4,18 @@ import json
 import time
 import subprocess
 import asyncio
-import re
-import sqlite3
 import aiohttp
-import shutil
 import threading
 import psutil
-import uuid
+import crypto
+import platform
+import uuid 
 import hashlib
+import sqlite3
+import shutil
+import signal
 from colorama import init, Fore, Style
+from threading import Lock
 
 url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
 response = requests.get(url)
@@ -255,7 +258,6 @@ def download_file(url, destination, binary=False):
         print(Fore.RED + f"Error downloading {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
         return None
 
-# Function to replace the .ROBLOSECURITY cookie value in Cookies.db using sqlite3
 def replace_cookie_value_in_db(db_path, new_cookie_value):
     try:
         conn = sqlite3.connect(db_path)
@@ -291,49 +293,40 @@ def replace_cookie_value_in_db(db_path, new_cookie_value):
         print(Fore.RED + f"Error replacing cookie value in database: {e}" + Style.RESET_ALL)
 
 def inject_cookies_and_appstorage():
-    # Ensure the Google Drive link is correct
     db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies"  # Keep this as binary
     appstorage_url = "https://raw.githubusercontent.com/shirooscripts/auto-rj/main/appStorage.json"  # Use this for JSON
 
-    # Download the files correctly
     downloaded_db_path = download_file(db_url, "Cookies.db", binary=True)
     downloaded_appstorage_path = download_file(appstorage_url, "appStorage.json", binary=False)
 
     if not downloaded_db_path or not downloaded_appstorage_path:
         print(Fore.RED + "Failed to download necessary files. Exiting." + Style.RESET_ALL)
         return
-    
-    # Path to cookie.txt file
+
     cookie_txt_path = os.path.join(os.getcwd(), "cookie.txt")  # cookie.txt in the same directory as the script
     
-    # Check if the cookie.txt file exists
     if not os.path.exists(cookie_txt_path):
         print(Fore.RED + "cookie.txt not found in the current directory!" + Style.RESET_ALL)
         return
 
-    # Read cookies from the cookie.txt file
     with open(cookie_txt_path, "r") as file:
         cookies = [line.strip() for line in file.readlines()]
 
-    # Check if there are cookies to inject
     if not cookies:
         print(Fore.RED + "No cookies found in cookie.txt. Please add your cookies." + Style.RESET_ALL)
         return
 
-    # Get the Roblox packages
     packages = get_roblox_packages()
 
     if len(cookies) > len(packages):
         print(Fore.RED + "More cookies in cookie.txt than packages available. Please ensure each cookie has a corresponding package." + Style.RESET_ALL)
         return
 
-    # Inject each cookie and appStorage.json into its corresponding package
     for idx, package_name in enumerate(packages):
         try:
             if idx < len(cookies):
                 cookie = cookies[idx]
                 
-                # Verify the cookie before injection
                 print(Fore.YELLOW + f"Verifying cookie for {package_name} before injection..." + Style.RESET_ALL)
                 if verify_cookie(cookie):
                     print(Fore.GREEN + f"Cookie for {package_name} is valid!" + Style.RESET_ALL)
@@ -376,6 +369,47 @@ def inject_cookies_and_appstorage():
 
     print(Fore.GREEN + "Cookie and appStorage injection completed for all packages." + Style.RESET_ALL) 
 
+def get_hwid_file_path(package_name):
+    directory = f"/data/data/{package_name}/app_assets/content/"
+    
+    try:
+        files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+
+        if not files:
+            print(Fore.RED + "No files found in the specified directory." + Style.RESET_ALL)
+            return None
+
+        last_file = files[-1]
+        hwid_file_path = os.path.join(directory, last_file)
+
+        return hwid_file_path
+            
+    except Exception as e:
+        print(Fore.RED + f"Error retrieving HWID file path: {e}" + Style.RESET_ALL)
+        return None
+        
+def get_hwid(package_name):
+    directory = f"/data/data/{package_name}/app_assets/content/"
+    
+    try:
+        files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+
+        if not files:
+            print(Fore.RED + "No files found in the specified directory." + Style.RESET_ALL)
+            return None
+
+        last_file = files[-1]
+        hwid_file_path = os.path.join(directory, last_file)
+
+        with open(hwid_file_path, "r") as file:
+            hwid = file.read().strip()
+            print(Fore.GREEN + f"HWID found: {hwid}" + Style.RESET_ALL)
+            return hwid
+            
+    except Exception as e:
+        print(Fore.RED + f"Error retrieving HWID: {e}" + Style.RESET_ALL)
+        return None
+
 def create_bypass_link(hwid_link, api_key="XqzyaenZishd33axPYPz"):
     return f"https://madkung.vercel.app/fluxus-api?url={hwid_link}&api_key={api_key}"
 
@@ -406,7 +440,7 @@ def main():
     print_header()
     
     while True:
-        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Roblox Account Login Using Cookie\n9. Bypass Fluxus\n10. Exit\nPlease Enter Your Choice: " + Style.RESET_ALL) 
+        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Roblox Account Login Using Cookie\n9. Bypass Fluxus\n10. Same Hwid Fluxus\n11. Exit\nPlease Enter Your Choice: " + Style.RESET_ALL) 
         
         if setup_type == "1" or setup_type == "9": 
             if setup_type == "9":
@@ -587,6 +621,25 @@ def main():
             input(Fore.GREEN + "\nPress Enter To Exit..." + Style.RESET_ALL) 
 
         elif setup_type == "10":
+            new_hwid = input("Enter the new HWID you want to set for all Fluxus packages: ")
+
+            packages = get_roblox_packages()
+
+            for package_name in packages:
+                hwid_file_path = get_hwid_file_path(package_name)
+                if hwid_file_path:
+                    try:
+                        with open(hwid_file_path, "w") as file:
+                            file.write(new_hwid)
+                        print(Fore.GREEN + f"HWID for {package_name} successfully updated to {new_hwid}" + Style.RESET_ALL)
+                    except Exception as e:
+                        print(Fore.RED + f"Error updating HWID for {package_name}: {e}" + Style.RESET_ALL)
+                else:
+                    print(Fore.RED + f"Failed to find HWID file for {package_name}. Skipping." + Style.RESET_ALL)
+
+            input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL)
+
+        elif setup_type == "11":
             global stop_webhook_thread
             stop_webhook_thread = True 
             break 
