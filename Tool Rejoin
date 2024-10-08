@@ -1472,7 +1472,7 @@ def main():
             print(Fore.GREEN + "User IDs saved from appStorage.json!" + Style.RESET_ALL)
 
             # Prompt for server link
-            server_link = input("Enter the game ID or private server link: ")
+            server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
             formatted_link = format_server_link(server_link)
 
             if formatted_link:
