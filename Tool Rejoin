@@ -1037,7 +1037,7 @@ def main():
 
         setup_type = input(Fore.LIGHTMAGENTA_EX + "Enter choice: " + Style.RESET_ALL)
         
- if setup_type == "1":
+if setup_type == "1":
     server_links = load_server_links()
     accounts = load_accounts()
 
@@ -1118,7 +1118,7 @@ def main():
 
                     if presence_type == 2:
                         package_statuses[package_name]["Status"] = Fore.GREEN + "In-Game" + Style.RESET_ALL
-                        
+
                         # Rejoin if the process is not running
                         if not is_roblox_running(package_name):
                             package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
@@ -1173,145 +1173,144 @@ def main():
             time.sleep(60)
             continue
 
-            
-        elif setup_type == "2":
-            accounts = []
-            packages = get_roblox_packages()
+elif setup_type == "2":
+    accounts = []
+    packages = get_roblox_packages()
 
-            for package_name in packages:
-                user_input = input(f"Enter the user ID or username for {package_name}: ")
-                user_id = None
+    for package_name in packages:
+        user_input = input(f"Enter the user ID or username for {package_name}: ")
+        user_id = None
 
-                if user_input.isdigit():
-                    user_id = user_input
-                else:
-                    print(f"Retrieving user ID for username: {user_input}...")
-                    user_id = asyncio.run(get_user_id(user_input))
-                    if user_id is None:
-                        print(Fore.RED + "Failed to retrieve user ID. Please enter the user ID manually." + Style.RESET_ALL)
-                        user_id = input("Enter the user ID: ")
+        if user_input.isdigit():
+            user_id = user_input
+        else:
+            print(f"Retrieving user ID for username: {user_input}...")
+            user_id = asyncio.run(get_user_id(user_input))
+            if user_id is None:
+                print(Fore.RED + "Failed to retrieve user ID. Please enter the user ID manually." + Style.RESET_ALL)
+                user_id = input("Enter the user ID: ")
 
-                accounts.append((package_name, user_id))
-                print(f"Set {package_name} to user ID: {user_id}")
+        accounts.append((package_name, user_id))
+        print(f"Set {package_name} to user ID: {user_id}")
 
-            save_accounts(accounts)
-            save_cache()
-            print(Fore.GREEN + "User IDs saved!" + Style.RESET_ALL)
+    save_accounts(accounts)
+    save_cache()
+    print(Fore.GREEN + "User IDs saved!" + Style.RESET_ALL)
 
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
-            
-        elif setup_type == "3":
-            server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
-            formatted_link = format_server_link(server_link)
+    input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-            if formatted_link:
-                packages = get_roblox_packages()
-                server_links = [(package_name, formatted_link) for package_name in packages]
-                save_server_links(server_links)
-                print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
-                
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)                 
+elif setup_type == "3":
+    server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
+    formatted_link = format_server_link(server_link)
 
-        elif setup_type == "4":
-            packages = get_roblox_packages()
-            server_links = []
+    if formatted_link:
+        packages = get_roblox_packages()
+        server_links = [(package_name, formatted_link) for package_name in packages]
+        save_server_links(server_links)
+        print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
 
-            for package_name in packages:
-                server_link = input(f"Enter the game ID or private server link for {package_name}: ")
-                formatted_link = format_server_link(server_link)
+    input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-                if formatted_link:
-                    server_links.append((package_name, formatted_link))
+elif setup_type == "4":
+    packages = get_roblox_packages()
+    server_links = []
 
-            save_server_links(server_links)  
-            
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
-            
-        elif setup_type == "5":
-            clear_choice = input(Fore.GREEN + "What do you want to clear?\n1. Clear User IDs\n2. Clear Server Links\n3. Clear Both\nEnter choice: " + Style.RESET_ALL)
+    for package_name in packages:
+        server_link = input(f"Enter the game ID or private server link for {package_name}: ")
+        formatted_link = format_server_link(server_link)
 
-            if clear_choice == "1":
-                if os.path.exists(ACCOUNTS_FILE):
-                    os.remove(ACCOUNTS_FILE)
-                    print(Fore.GREEN + "User IDs cleared successfully!" + Style.RESET_ALL)
-                else:
-                    print(Fore.YELLOW + f"No such file: '{ACCOUNTS_FILE}' found to clear." + Style.RESET_ALL)
+        if formatted_link:
+            server_links.append((package_name, formatted_link))
 
-            elif clear_choice == "2":
-                if os.path.exists(SERVER_LINKS_FILE):
-                    os.remove(SERVER_LINKS_FILE)
-                    print(Fore.GREEN + "Server links cleared successfully!" + Style.RESET_ALL)
-                else:
-                    print(Fore.YELLOW + f"No such file: '{SERVER_LINKS_FILE}' found to clear." + Style.RESET_ALL)
+    save_server_links(server_links)
 
-            elif clear_choice == "3":
-                if os.path.exists(ACCOUNTS_FILE):
-                    os.remove(ACCOUNTS_FILE)
-                    print(Fore.GREEN + "User IDs cleared successfully!" + Style.RESET_ALL)
-                else:
-                    print(Fore.YELLOW + f"No such file: '{ACCOUNTS_FILE}' found to clear." + Style.RESET_ALL)
+    input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-                if os.path.exists(SERVER_LINKS_FILE):
-                    os.remove(SERVER_LINKS_FILE)
-                    print(Fore.GREEN + "Server links cleared successfully!" + Style.RESET_ALL)
-                else:
-                    print(Fore.YELLOW + f"No such file: '{SERVER_LINKS_FILE}' found to clear." + Style.RESET_ALL)
-                    
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
-            
-        elif setup_type == "6":
-            accounts = load_accounts()
-            server_links = load_server_links()
+elif setup_type == "5":
+    clear_choice = input(Fore.GREEN + "What do you want to clear?\n1. Clear User IDs\n2. Clear Server Links\n3. Clear Both\nEnter choice: " + Style.RESET_ALL)
 
-            if accounts and server_links:
-                headers = ["Account", "Server", "Game ID", "Username"]
-                rows = [(package, server, game_id, get_username(game_id)) for (package, game_id), (_, server) in zip(accounts, server_links)]
-                create_dynamic_table(headers, rows)
-            else:
-                print(Fore.RED + "No accounts or server links to display." + Style.RESET_ALL)
-            input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL) 
-        elif setup_type == "7":
-            print(Fore.GREEN + "Auto Setup User IDs from each package's appStorage.json..." + Style.RESET_ALL)
-            packages = get_roblox_packages()
-            accounts = []
+    if clear_choice == "1":
+        if os.path.exists(ACCOUNTS_FILE):
+            os.remove(ACCOUNTS_FILE)
+            print(Fore.GREEN + "User IDs cleared successfully!" + Style.RESET_ALL)
+        else:
+            print(Fore.YELLOW + f"No such file: '{ACCOUNTS_FILE}' found to clear." + Style.RESET_ALL)
 
-            for package_name in packages:
-                file_path = f'/data/data/{package_name}/files/appData/LocalStorage/appStorage.json'
-                user_id = find_userid_from_file(file_path)
-                
-                if user_id:
-                    accounts.append((package_name, user_id))
-                    print(f"Found UserId for {package_name}: {user_id}")
-                else:
-                    print(Fore.RED + f"UserId not found for {package_name}. Make sure the file path is correct and the format is as expected." + Style.RESET_ALL)
+    elif clear_choice == "2":
+        if os.path.exists(SERVER_LINKS_FILE):
+            os.remove(SERVER_LINKS_FILE)
+            print(Fore.GREEN + "Server links cleared successfully!" + Style.RESET_ALL)
+        else:
+            print(Fore.YELLOW + f"No such file: '{SERVER_LINKS_FILE}' found to clear." + Style.RESET_ALL)
 
-            save_accounts(accounts)
-            save_cache()
-            print(Fore.GREEN + "User IDs saved from appStorage.json!" + Style.RESET_ALL)
+    elif clear_choice == "3":
+        if os.path.exists(ACCOUNTS_FILE):
+            os.remove(ACCOUNTS_FILE)
+            print(Fore.GREEN + "User IDs cleared successfully!" + Style.RESET_ALL)
+        else:
+            print(Fore.YELLOW + f"No such file: '{ACCOUNTS_FILE}' found to clear." + Style.RESET_ALL)
 
-            # Prompt for server link
-            server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
-            formatted_link = format_server_link(server_link)
+        if os.path.exists(SERVER_LINKS_FILE):
+            os.remove(SERVER_LINKS_FILE)
+            print(Fore.GREEN + "Server links cleared successfully!" + Style.RESET_ALL)
+        else:
+            print(Fore.YELLOW + f"No such file: '{SERVER_LINKS_FILE}' found to clear." + Style.RESET_ALL)
 
-            if formatted_link:
-                server_links = [(package_name, formatted_link) for package_name in packages]
-                save_server_links(server_links)
-                print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+    input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-        elif setup_type == "8":  # Auto Login via Cookie
-            inject_cookies_and_appstorage()
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
-            
-        elif setup_type == "9":
-            setup_webhook()
+elif setup_type == "6":
+    accounts = load_accounts()
+    server_links = load_server_links()
 
-        elif setup_type == "10":
-            global stop_webhook_thread
-            stop_webhook_thread = True  
-            break 
+    if accounts and server_links:
+        headers = ["Account", "Server", "Game ID", "Username"]
+        rows = [(package, server, game_id, get_username(game_id)) for (package, game_id), (_, server) in zip(accounts, server_links)]
+        create_dynamic_table(headers, rows)
+    else:
+        print(Fore.RED + "No accounts or server links to display." + Style.RESET_ALL)
+    input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL)
+elif setup_type == "7":
+    print(Fore.GREEN + "Auto Setup User IDs from each package's appStorage.json..." + Style.RESET_ALL)
+    packages = get_roblox_packages()
+    accounts = []
+
+    for package_name in packages:
+        file_path = f'/data/data/{package_name}/files/appData/LocalStorage/appStorage.json'
+        user_id = find_userid_from_file(file_path)
+
+        if user_id:
+            accounts.append((package_name, user_id))
+            print(f"Found UserId for {package_name}: {user_id}")
+        else:
+            print(Fore.RED + f"UserId not found for {package_name}. Make sure the file path is correct and the format is as expected." + Style.RESET_ALL)
+
+    save_accounts(accounts)
+    save_cache()
+    print(Fore.GREEN + "User IDs saved from appStorage.json!" + Style.RESET_ALL)
+
+    # Prompt for server link
+    server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
+    formatted_link = format_server_link(server_link)
+
+    if formatted_link:
+        server_links = [(package_name, formatted_link) for package_name in packages]
+        save_server_links(server_links)
+        print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
+    input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
+
+elif setup_type == "8":  # Auto Login via Cookie
+    inject_cookies_and_appstorage()
+    input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
+
+elif setup_type == "9":
+    setup_webhook()
+
+elif setup_type == "10":
+    global stop_webhook_thread
+    stop_webhook_thread = True
+    break
 
 if __name__ == "__main__":
-    load_cache()  # Load the cache at the start
-    main()  # Run the main function
-    save_cache()  # Save the cache before exiting
+    load_cache()  
+    main()  
+    save_cache() 
