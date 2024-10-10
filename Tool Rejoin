@@ -466,21 +466,21 @@ def capture_screenshot():
     # Define the path for the screenshot
     screenshot_path = os.path.join(screenshots_dir, "screenshot.png")
     
-    # Check if termux-screenshot command is available
-    if shutil.which("termux-screenshot") is None:
-        print(Fore.RED + "termux-screenshot command not found or inaccessible." + Style.RESET_ALL)
+    try:
+        # Capture the screenshot
+        screenshot = pyautogui.screenshot()
+        screenshot.save(screenshot_path)  # Save the screenshot
+
+        # Check if the screenshot was successfully captured
+        if not os.path.exists(screenshot_path):
+            print(Fore.RED + f"Failed to save screenshot at {screenshot_path}. Skipping this webhook." + Style.RESET_ALL)
+            return None
+
+        return screenshot_path
+
+    except Exception as e:
+        print(Fore.RED + f"Error capturing screenshot: {e}" + Style.RESET_ALL)
         return None
-
-    # Capture the screenshot
-    result = os.system(f"termux-screenshot -p -o {screenshot_path}")
-    
-    # Check if the screenshot was successfully captured
-    if result != 0 or not os.path.exists(screenshot_path):
-        print(Fore.RED + f"Failed to capture screenshot at {screenshot_path}. Skipping this webhook." + Style.RESET_ALL)
-        return None
-
-    return screenshot_path
-
 
 # Function to retrieve system information
 def get_system_info():
@@ -1317,17 +1317,17 @@ def main():
                 print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
 
-        elif setup_type == "8":  
+        elif setup_type == "8":  # Auto Login via Cookie
             inject_cookies_and_appstorage()
-            input(Fore.GREEN + "\nPress Enter To Exit..." + Style.RESET_ALL) 
-
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+ 
         elif setup_type == "9":
             setup_webhook()
 
         elif setup_type == "10":
-            stop_webhook_thread = True  
-            print(Fore.YELLOW + "Please Wait For Rejoin Tool To Shut Down..." + Style.RESET_ALL)
-            break  
+            stop_webhook_thread = True  # Stop the webhook thread if it is running
+            print(Fore.YELLOW + "Stopping the webhook thread..." + Style.RESET_ALL)
+            break  # Exit the loop
 
 if __name__ == "__main__":
     load_cache()  # Load the cache at the start
