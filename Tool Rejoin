@@ -499,6 +499,7 @@ def get_roblox_packages():
     return packages
 
 def is_roblox_running(package_name):
+    package_name = package_name.lower() 
     for proc in psutil.process_iter(['name']):
         if package_name in proc.info['name'].lower():
             return True
@@ -517,26 +518,26 @@ def kill_roblox_process(package_name):
     os.system(f"pkill -f {package_name}")
     time.sleep(2) 
 
+def update_package_status(package_name, status, package_statuses):
+    package_statuses[package_name]["Status"] = status
+    update_status_table(package_statuses)
+
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        package_statuses[package_name]["Status"] = Fore.YELLOW +  f"Enabling Roblox Game For Package Is: {package_name}..." + Style.RESET_ALL
-        update_status_table(package_statuses)
+        update_package_status(package_name, Fore.YELLOW + f"Enabling Roblox Game For Package: {package_name}..." + Style.RESET_ALL, package_statuses)
 
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(15) 
 
-        package_statuses[package_name]["Status"] = Fore.YELLOW + f"Joining Roblox Game For Package Is: {package_name}..." + Style.RESET_ALL
-        update_status_table(package_statuses)
+        update_package_status(package_name, Fore.YELLOW + f"Joining Roblox Game For Package: {package_name}..." + Style.RESET_ALL, package_statuses)
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         time.sleep(20)
-        
-        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox Game" + Style.RESET_ALL
-        update_status_table(package_statuses)
+
+        update_package_status(package_name, Fore.GREEN + "Joined Roblox Game" + Style.RESET_ALL, package_statuses)
 
     except Exception as e:
-        package_statuses[package_name]["Status"] = Fore.RED + f"An Error Occurred While Enabling Roblox Game For Package Is: {package_name}, Status Code Is: {e}" + Style.RESET_ALL
-        update_status_table(package_statuses)
+        update_package_status(package_name, Fore.RED + f"An Error Occurred While Enabling Roblox Game For Package: {package_name}, Status Code: {e}" + Style.RESET_ALL, package_statuses)
         print(f"Error details: {e}")
 
 def check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts):
