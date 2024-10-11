@@ -41,40 +41,58 @@ executors = {
 workspace_paths = []
 
 for executor, base_path in executors.items():
-    workspace_paths.append(f"{base_path}Workspace")   # Uppercase 'W'
-    workspace_paths.append(f"{base_path}workspace")   # Lowercase 'w'
+    workspace_paths.append(f"{base_path}Workspace")   
+    workspace_paths.append(f"{base_path}workspace")  
 
     
 lua_script_template = '''
+-- Thank You For Buying Shiroo Tool Improved And Optimized By Axionix.
+-- This Tool Was Created By A Group And The Owner Is not.shiroo And It Was Deobfuscated By Axionix And He Improved It.
+-- not.shiroo's Discord Is: https://discord.gg/Tb6NxZKEBj
+-- Axionix's Discord Is: https://discord.gg/axionix
+-- I Would Like To Thank You For Purchasing The Improved Tool From Axionix.
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
-local os_time = os.time()
 
-getgenv().StopUpdate = false
+local stopUpdate = false
+local os_time = os.time()
+local localPlayer = Players.LocalPlayer
 
 GuiService.ErrorMessageChanged:Connect(function()
     local Code = GuiService:GetErrorCode().Value
     if Code >= Enum.ConnectionError.DisconnectErrors.Value then
-        getgenv().StopUpdate = true
+        stopUpdate = true
     end
 end)
 
-repeat wait() until game.JobId ~= nil
+game.Loaded:Wait()
 
 local function writeExecutorStatus(status)
-    local username = Players.LocalPlayer.Name  -- Get the player's username
+    local username = localPlayer.Name 
     pcall(function() 
-        writefile("executor_check_" .. username .. ".txt", status .. ":" .. os_time)  -- username and timestamp
+        writefile("executor_check_" .. username .. ".txt", status .. ":" .. os_time)  
     end)
 end
 
 writeExecutorStatus("working")
 
-while wait(1) do
-    if not getgenv().StopUpdate and Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerScripts") then 
-        -- Continuously update the working status
-        writeExecutorStatus("working")
+local lastStatus = "working"
+
+while true do
+    if not stopUpdate and localPlayer and localPlayer:FindFirstChild("PlayerScripts") then
+        if lastStatus ~= "working" then
+            writeExecutorStatus("working")
+            lastStatus = "working"
+        end
+    else
+        if lastStatus ~= "stopped" then
+            writeExecutorStatus("stopped")
+            lastStatus = "stopped"
+        end
     end
+    wait(1) 
+-- not.shiroo's Discord Is: https://discord.gg/Tb6NxZKEBj
+-- Axionix's Discord Is: https://discord.gg/axionix
 end
 '''
 
