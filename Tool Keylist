@@ -24,11 +24,11 @@ input_key = load_key()
 if input_key is None:
     print(Fore.GREEN + "Reworked Tool From Axionix" + Style.RESET_ALL)
     print(Fore.GREEN + "Wish You Have The Best Experience" + Style.RESET_ALL)
-    print(Fore.GREEN + "https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+    print(Fore.GREEN + "https://discord.gg/axionix" + Style.RESET_ALL)
     print(Fore.RED + "I Forbid You From Mocking, Joking, Insulting Or Deobfuscate My Tool" + Style.RESET_ALL)
     print(Fore.RED + "This Tool Will Be Free For 7 Days, Until October 8, 2024 It Will End Free" + Style.RESET_ALL)
     input_key = input(Fore.YELLOW + "Please Enter Your Key: " + Style.RESET_ALL)
-    print(Fore.CYAN + "If You Haven't Bought The Key, Please Join Discord: https://discord.gg/C6VaVKsapN To Buy Key" + Style.RESET_ALL)
+    print(Fore.CYAN + "If You Haven't Bought The Key, Please Join Discord: https://discord.gg/axionix To Buy Key" + Style.RESET_ALL)
     save_key(input_key)  
 
 if input_key in blacklist:
@@ -36,10 +36,10 @@ if input_key in blacklist:
     print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
     print(Fore.YELLOW + "Currently Whitelisting, Please Wait A Moment..." + Style.RESET_ALL)
     print(Fore.GREEN + "Key Check Done" + Style.RESET_ALL)
-    print(Fore.RED + "Your Key Has Been Blacklisted, If There Is Any Error, Please Go To Discord: https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+    print(Fore.RED + "Your Key Has Been Blacklisted, If There Is Any Error, Please Go To Discord: https://discord.gg/axionix" + Style.RESET_ALL)
     print(Fore.RED + "You Can't Use This Tool, Please Check Key Again Or Buy Key Again!" + Style.RESET_ALL)
     print(Fore.RED + "I Remind You That Your Key Has Been Blacklisted!" + Style.RESET_ALL)
-    print(Fore.CYAN + "https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+    print(Fore.CYAN + "https://discord.gg/axionix" + Style.RESET_ALL)
     
     data = {
         "content": f"Someone Used Axionix Tool With Blacklisted Key: {input_key}"
@@ -60,7 +60,7 @@ elif input_key in keylist:
     print(Fore.GREEN + "Key Check Done" + Style.RESET_ALL)
     print(Fore.GREEN + "Your Key Is Fine And Usable, Thank You For Using Axionix Tool" + Style.RESET_ALL)
     print(Fore.GREEN + "I Repeat That Your Key Is Correct And You Can Use The Tool" + Style.RESET_ALL)
-    print(Fore.CYAN + "https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+    print(Fore.CYAN + "https://discord.gg/axionix" + Style.RESET_ALL)
     
     data = {
         "content": f"Someone Used Axionix Tool With The Key Being: {input_key}"
@@ -79,7 +79,7 @@ else:
     print(Fore.RED + "Your Key Is Wrong, Please Check And Try Again!" + Style.RESET_ALL)
     print(Fore.RED + "You Can't Use This Tool, Please Check Key Again Or Buy Key Again!" + Style.RESET_ALL)
     print(Fore.RED + "I Repeat Your Key Is Wrong!" + Style.RESET_ALL)
-    print(Fore.CYAN + "https://discord.gg/C6VaVKsapN" + Style.RESET_ALL)
+    print(Fore.CYAN + "https://discord.gg/axionix" + Style.RESET_ALL)
     
     data = {
         "content": f"Someone Used Axionix Tool With Wrong Key: {input_key}"
