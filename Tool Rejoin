@@ -53,47 +53,35 @@ lua_script_template = '''
 -- I Would Like To Thank You For Purchasing The Improved Tool From Axionix.
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
-
-local stopUpdate = false
 local os_time = os.time()
-local localPlayer = Players.LocalPlayer
+
+getgenv().StopUpdate = false
 
 GuiService.ErrorMessageChanged:Connect(function()
     local Code = GuiService:GetErrorCode().Value
     if Code >= Enum.ConnectionError.DisconnectErrors.Value then
-        stopUpdate = true
+        getgenv().StopUpdate = true
     end
 end)
 
-game.Loaded:Wait()
+repeat wait() until game.JobId ~= nil
 
 local function writeExecutorStatus(status)
-    local username = localPlayer.Name 
+    local username = Players.LocalPlayer.Name  -- Get the player's username
     pcall(function() 
-        writefile("executor_check_" .. username .. ".txt", status .. ":" .. os_time)  
+        writefile("executor_check_" .. username .. ".txt", status .. ":" .. os_time)  -- username and timestamp
     end)
 end
 
 writeExecutorStatus("working")
 
-local lastStatus = "working"
-
-while true do
-    if not stopUpdate and localPlayer and localPlayer:FindFirstChild("PlayerScripts") then
-        if lastStatus ~= "working" then
-            writeExecutorStatus("working")
-            lastStatus = "working"
-        end
-    else
-        if lastStatus ~= "stopped" then
-            writeExecutorStatus("stopped")
-            lastStatus = "stopped"
-        end
+while wait(1) do
+    if not getgenv().StopUpdate and Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerScripts") then 
+        writeExecutorStatus("working")
     end
-    wait(1) 
+end
 -- not.shiroo's Discord Is: https://discord.gg/Tb6NxZKEBj
 -- Axionix's Discord Is: https://discord.gg/axionix
-end
 '''
 
 def clear_screen():
