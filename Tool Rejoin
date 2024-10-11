@@ -487,8 +487,22 @@ def get_roblox_packages():
 
     return packages
 
+def is_roblox_running(package_name):
+    for proc in psutil.process_iter(['name']):
+        if package_name in proc.info['name'].lower():
+            return True
+    return False
+
+def kill_roblox_processes():
+    print("Killing all Roblox processes...")
+    package_names = get_roblox_packages()
+    for package_name in package_names:
+        print(f"Trying to kill process for package: {package_name}")
+        os.system(f"pkill -f {package_name}")
+    time.sleep(2) 
+
 def kill_roblox_process(package_name):
-    print(Fore.YELLOW + f"Roblox Game Shutdown In Progress Package Is: {package_name}" + Style.RESET_ALL)
+    print(f"Killing Roblox process for {package_name}...")
     os.system(f"pkill -f {package_name}")
     time.sleep(2) 
 
