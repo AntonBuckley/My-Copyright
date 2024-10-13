@@ -480,7 +480,7 @@ def inject_cookies_and_appstorage():
 
 def get_roblox_packages():
     packages = []
-    suffixes = 'qwertyuiopasdfghjklzxcvbnm'
+    suffixes = 'qwertyuiopasdfghjklzxcvbnm0123456789'
     
     try:
         output = subprocess.check_output("pm list packages", shell=True, text=True)
