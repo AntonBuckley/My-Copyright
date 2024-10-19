@@ -483,12 +483,22 @@ def inject_cookies_and_appstorage():
 
 def get_roblox_packages():
     packages = []
-    for suffix in ['u', 'v', 'w', 'x', 'y', 'z', 'p', 'q', 'r', 's', 't', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']:
+    suffixes = 'qwertyuiopasdfghjklzxcvbnm0123456789'
+    
+    try:
+        output = subprocess.check_output("pm list packages", shell=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print(Fore.RED + "An Error Occurred While Searching For Package On Your Device!" + Style.RESET_ALL)
+        return packages
+
+    for suffix in suffixes:
         package_name = f"com.roblox.clien{suffix}"
-        print(f"Checking for package: {package_name}")
-        if os.system(f"pm list packages | grep -q '{package_name}'") == 0:
-            print(f"Found package: {package_name}")
+        print(Fore.YELLOW + f"Checking Packages On Your Device: {package_name}" + Style.RESET_ALL)
+        
+        if package_name in output:
+            print(Fore.GREEN + f"Package Found On Your Device Is: {package_name}" + Style.RESET_ALL)
             packages.append(package_name)
+
     return packages
 
 def is_roblox_running(package_name):
