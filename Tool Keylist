@@ -26,7 +26,7 @@ if input_key is None:
     print(Fore.GREEN + "Wish You Have The Best Experience" + Style.RESET_ALL)
     print(Fore.GREEN + "https://discord.gg/axionix" + Style.RESET_ALL)
     print(Fore.RED + "I Forbid You From Mocking, Joking, Insulting Or Deobfuscate My Tool" + Style.RESET_ALL)
-    print(Fore.RED + "This Tool Will Be Free For 7 Days, Until October 8, 2024 It Will End Free" + Style.RESET_ALL)
+    print(Fore.RED + "This Tool Is No Longer Free, It's Paid" + Style.RESET_ALL)
     input_key = input(Fore.YELLOW + "Please Enter Your Key: " + Style.RESET_ALL)
     print(Fore.CYAN + "If You Haven't Bought The Key, Please Join Discord: https://discord.gg/axionix To Buy Key" + Style.RESET_ALL)
     save_key(input_key)  
