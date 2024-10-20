@@ -42,30 +42,34 @@ def print_header():
         \/      \/              \/         \/         \/     \/\______|              \/           
 """
     print(Fore.LIGHTCYAN_EX + header + Style.RESET_ALL)
-        
+
 def get_roblox_packages():
-    packages = []
     suffixes = 'qwertyuiopasdfghjklzxcvbnm0123456789'
+    package_prefix = "com.roblox.clien"
     
     try:
         output = subprocess.check_output("pm list packages", shell=True, text=True)
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         print(Fore.RED + "An Error Occurred While Searching For Package On Your Device!" + Style.RESET_ALL)
-        return packages
+        return []
 
-    for suffix in suffixes:
-        package_name = f"com.roblox.clien{suffix}"
-        print(Fore.YELLOW + f"Checking Packages On Your Device: {package_name}" + Style.RESET_ALL)
-        
-        if package_name in output:
-            print(Fore.GREEN + f"Package Found On Your Device Is: {package_name}" + Style.RESET_ALL)
-            packages.append(package_name)
-
+    packages = [f"{package_prefix}{suffix}" for suffix in suffixes if f"{package_prefix}{suffix}" in output]
+    
+    if packages:
+        for package in packages:
+            print(Fore.GREEN + f"Package Found On Your Device, Which Is: {package}" + Style.RESET_ALL)
+    else:
+        print(Fore.YELLOW + "No Package Found On Your Device, Please Set Package To 0-9 Or A-M!" + Style.RESET_ALL)
+    
     return packages
 
 def kill_roblox_processes():
     print(Fore.YELLOW + "Turning Off All Roblox Games On Your Device..." + Style.RESET_ALL)
     package_names = get_roblox_packages()
+
+    if not package_names:
+        print(Fore.RED + "There Are No Active Packages On Your Device!" + Style.RESET_ALL)
+        return
 
     for package_name in package_names:
         kill_roblox_process(package_name)
@@ -74,7 +78,6 @@ def kill_roblox_process(package_name):
     print(Fore.YELLOW + f"Roblox Game Shutdown In Progress: {package_name}" + Style.RESET_ALL)
     
     try:
-        # Use subprocess for better control over the process
         result = subprocess.run(['pkill', '-f', package_name], capture_output=True, text=True)
         
         if result.returncode == 0:
@@ -83,8 +86,8 @@ def kill_roblox_process(package_name):
             print(Fore.RED + f"An Error Occurred While Closing Roblox Game: {package_name} (might not exist)" + Style.RESET_ALL)
     
     except subprocess.CalledProcessError as e:
-        print(Fore.RED + f"Error occurred while closing Roblox game: {package_name}. Details: {e}" + Style.RESET_ALL)
-    
+        print(Fore.RED + f"An Error Occurred While Closing Roblox Game With Package Is {package_name}, Status Code Is: {e}" + Style.RESET_ALL)
+
     time.sleep(1)
 
 def launch_roblox(package_name, server_link, num_packages):
@@ -103,11 +106,12 @@ def launch_roblox(package_name, server_link, num_packages):
 def format_server_link(input_link):
     if 'roblox.com' in input_link:
         return input_link
-    elif re.match(r'^\d+$', input_link):
+    
+    if input_link.isdigit():
         return f'roblox://placeID={input_link}'
-    else:
-        print(Fore.RED + "Invalid Input! Please Enter Valid Game ID Or Valid Private Server Link!" + Style.RESET_ALL)
-        return None
+    
+    print(Fore.RED + "Invalid Input! Please Enter Valid Game ID Or Valid Private Server Link!" + Style.RESET_ALL)
+    return None
 
 def save_server_links(server_links):
     with open(SERVER_LINKS_FILE, "w") as file:
@@ -190,18 +194,19 @@ def get_username(user_id):
         return None
 
 def check_user_online(user_id):
+    url = "https://presence.roblox.com/v1/presence/users"
+    headers = {'Content-Type': 'application/json'}
+    body = {"userIds": [user_id]}
+    
     try:
-        url = "https://presence.roblox.com/v1/presence/users"
-        headers = {'Content-Type': 'application/json'}
-        body = json.dumps({"userIds": [user_id]})
-        response = requests.post(url, headers=headers, data=body)
-        response.raise_for_status()
-        
+        response = requests.post(url, headers=headers, json=body)
+        response.raise_for_status() 
+
         data = response.json()
-        presence_type = data["userPresences"][0]["userPresenceType"]
-        return presence_type
-    except Exception as e:
-        print(f"Error checking online status: {e}")
+        return data["userPresences"][0].get("userPresenceType")
+    
+    except requests.RequestException as e:
+        print(f"An Error Occurred While Checking Status, Status Code Is: {e}")
         return None
 
 def verify_cookie(cookie_value):
@@ -239,24 +244,26 @@ def verify_cookie(cookie_value):
     except Exception as e:
         print(Fore.RED + f"Exception occurred while verifying cookie: {e}" + Style.RESET_ALL)
         return False
-        
+  
 def download_file(url, destination, binary=False):
     try:
-        response = requests.get(url, stream=True)
-        if response.status_code == 200:
-            mode = 'wb' if binary else 'w'
-            with open(destination, mode) as file:
-                if binary:
-                    shutil.copyfileobj(response.raw, file)
-                else:
-                    file.write(response.text)
-            print(Fore.GREEN + f"{os.path.basename(destination)} downloaded successfully." + Style.RESET_ALL)
-            return destination
-        else:
-            print(Fore.RED + f"Failed to download {os.path.basename(destination)}." + Style.RESET_ALL)
-            return None
+        with requests.Session() as session:
+            response = session.get(url, stream=True)
+            if response.status_code == 200:
+                mode = 'wb' if binary else 'w'
+                with open(destination, mode) as file:
+                    if binary:
+                        shutil.copyfileobj(response.raw, file)
+                    else:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            file.write(chunk.decode('utf-8'))
+                print(Fore.GREEN + f"{os.path.basename(destination)} Downloaded Successfully." + Style.RESET_ALL)
+                return destination
+            else:
+                print(Fore.RED + f"An Error Occurred While Downloading the File: {os.path.basename(destination)}, Status Code Is: {response.status_code}" + Style.RESET_ALL)
+                return None
     except Exception as e:
-        print(Fore.RED + f"Error downloading {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Another Error Occurred While Downloading the File: {os.path.basename(destination)}, Status Code Is: {e}" + Style.RESET_ALL)
         return None
 
 def replace_cookie_value_in_db(db_path, new_cookie_value):
