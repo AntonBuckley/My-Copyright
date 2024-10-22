@@ -58,8 +58,7 @@ local os_time = os.time()
 getgenv().StopUpdate = false
 
 GuiService.ErrorMessageChanged:Connect(function()
-    local Code = GuiService:GetErrorCode().Value
-    if Code >= Enum.ConnectionError.DisconnectErrors.Value then
+    if GuiService:GetErrorCode().Value >= Enum.ConnectionError.DisconnectErrors.Value then
         getgenv().StopUpdate = true
     end
 end)
@@ -67,13 +66,23 @@ end)
 repeat wait() until game.JobId ~= nil
 
 local function writeExecutorStatus(status)
-    local username = Players.LocalPlayer.Name  -- Get the player's username
-    pcall(function() 
-        writefile("executor_check_" .. username .. ".txt", status .. ":" .. os_time)  -- username and timestamp
+    local username = Players.LocalPlayer.Name  
+    local currentTime = os.time() 
+    local success, err = pcall(function() 
+        writefile("executor_check_" .. username .. ".txt", status .. ":" .. currentTime) 
     end)
+
+    if not success then
+        warn("An Error Occurred While Rewriting File Status")  
+    end
 end
 
 writeExecutorStatus("working")
+
+while not getgenv().StopUpdate do
+    wait(3)  
+    writeExecutorStatus("working") 
+end
 '''
 
 def clear_screen():
