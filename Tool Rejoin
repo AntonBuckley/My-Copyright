@@ -51,40 +51,29 @@ for executor, base_path in executors.items():
 
     
 lua_script_template = '''
-repeat wait() until game:IsLoaded()
-
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local os_time = os.time()
 
 getgenv().StopUpdate = false
-local username = Players.LocalPlayer.Name
-local statusFile = "executor_check_" .. username .. ".txt"
 
-local function hasExecutedBefore()
-    return pcall(function()
-        return readfile(statusFile) == "executed"
-    end)
-end
+GuiService.ErrorMessageChanged:Connect(function()
+    local Code = GuiService:GetErrorCode().Value
+    if Code >= Enum.ConnectionError.DisconnectErrors.Value then
+        getgenv().StopUpdate = true
+    end
+end)
+
+repeat wait() until game.JobId ~= nil
 
 local function writeExecutorStatus(status)
-    pcall(function()
-        writefile(statusFile, status .. ":" .. os_time)
+    local username = Players.LocalPlayer.Name  -- Get the player's username
+    pcall(function() 
+        writefile("executor_check_" .. username .. ".txt", status .. ":" .. os_time)  -- username and timestamp
     end)
 end
 
-if not hasExecutedBefore() then
-    writefile(statusFile, "executed")
-
-    writeExecutorStatus("working")
-
-    GuiService.ErrorMessageChanged:Connect(function()
-        local Code = GuiService:GetErrorCode().Value
-        if Code >= Enum.ConnectionError.DisconnectErrors.Value then
-            getgenv().StopUpdate = true
-        end
-    end)
-end
+writeExecutorStatus("working")
 '''
 
 def clear_screen():
@@ -111,6 +100,7 @@ ___________.__                     __   .__                   __________        
         print(Style.RESET_ALL)
 
     print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Version: 2" + Style.RESET_ALL)
 
 print_rainbow_header()
 
