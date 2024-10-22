@@ -109,7 +109,7 @@ ___________.__                     __   .__                   __________        
         print(Style.RESET_ALL)
 
     print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
-    print(Fore.LIGHTMAGENTA_EX + "Version: 2" + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Version: 3" + Style.RESET_ALL)
 
 print_rainbow_header()
 
