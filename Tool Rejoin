@@ -818,21 +818,36 @@ def save_cache():
         os.replace(temp_file, CACHE_FILE)  # Atomic move to replace the file
     except IOError as e:
         print(Fore.RED + f"Error saving cache: {e}" + Style.RESET_ALL)
-        
+
 def check_user_online(user_id):
-    try:
-        url = "https://presence.roblox.com/v1/presence/users"
-        headers = {'Content-Type': 'application/json'}
-        body = json.dumps({"userIds": [user_id]})
-        response = requests.post(url, headers=headers, data=body)
-        response.raise_for_status()
-        
-        data = response.json()
-        presence_type = data["userPresences"][0]["userPresenceType"]
-        return presence_type
-    except Exception as e:
-        print(f"Error checking online status: {e}")
-        return None
+    max_retries = 3
+    delay = 2
+
+    for attempt in range(max_retries):
+        try:
+            primary_url = "https://presence.roblox.com/v1/presence/users"
+            headers = {'Content-Type': 'application/json'}
+            body = json.dumps({"userIds": [user_id]})
+            with requests.Session() as session:
+                primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
+            primary_response.raise_for_status()
+            primary_data = primary_response.json()
+            primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
+            primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
+
+            if primary_last_location == "Website":
+                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
+                primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
+
+            return primary_presence_type, primary_last_location
+
+        except requests.exceptions.RequestException as e:
+            print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+                delay *= 2  
+            else:
+                return None, None
 
 detect_and_write_lua_script()
         
