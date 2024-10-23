@@ -85,26 +85,22 @@ def clear_screen():
 
 def print_rainbow_header():
     header = r"""
-___________.__                     __   .__                   __________              __         .__         
-\_   _____/|  |    ____  _____   _/  |_ |__|  ____     ____   \______   \  ____      |__|  ____  |__|  ____  
- |    __)  |  |   /  _ \ \__  \  \   __\|  | /    \   / ___\   |       _/_/ __ \     |  | /  _ \ |  | /    \ 
- |     \   |  |__(  <_> ) / __ \_ |  |  |  ||   |  \ / /_/  >  |    |   \\  ___/     |  |(  <_> )|  ||   |  \
- \___  /   |____/ \____/ (____  / |__|  |__||___|  / \___  /   |____|_  / \___  >/\__|  | \____/ |__||___|  /
-     \/                       \/                 \/ /_____/           \/      \/ \______|                 \/          
+____  ___                           ___ ___         ___.    
+\   \/  /  ____  _______   ____    /   |   \  __ __ \_ |__  
+ \     / _/ __ \ \_  __ \ /  _ \  /    ~    \|  |  \ | __ \ 
+ /     \ \  ___/  |  | \/(  <_> ) \    Y    /|  |  / | \_\ \
+/___/\  \ \___  > |__|    \____/   \___|_  / |____/  |___  /
+      \_/     \/                         \/              \/     
 """
-    colors = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
-    color_index = 0
+    color = Fore.RED  
 
     for line in header.splitlines():
         for char in line:
-            print(colors[color_index % len(colors)] + char, end='')
-            color_index += 1
-            if color_index % 10 == 0:
-                time.sleep(0.01)  
+            print(color + char, end='')
         print(Style.RESET_ALL)
 
-    print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
-    print(Fore.LIGHTMAGENTA_EX + "Version: 2" + Style.RESET_ALL)
+    print(Fore.RED + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
+    print(Fore.RED + "Version: 1" + Style.RESET_ALL)
 
 print_rainbow_header()
 
