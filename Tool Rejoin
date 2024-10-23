@@ -92,16 +92,12 @@ ____  ___                           ___ ___         ___.
 /___/\  \ \___  > |__|    \____/   \___|_  / |____/  |___  /
       \_/     \/                         \/              \/ 
 """
-    colors = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
-    color_index = 0
+    color = Fore.RED
 
     for line in header.splitlines():
         for char in line:
-            print(colors[color_index % len(colors)] + char, end='')
-            color_index += 1
-            if color_index % 10 == 0:
-                time.sleep(0.01)  
-        print(Style.RESET_ALL)
+            print(color + char, end='')
+        print(Style.RESET_ALL)  
 
     print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
     print(Fore.LIGHTMAGENTA_EX + "Version: 1" + Style.RESET_ALL)
