@@ -1365,12 +1365,6 @@ def main():
                     package_statuses[package_name]["Status"] = Fore.RED + "Failed to retrieve HWID" + Style.RESET_ALL
                 update_status_table(package_statuses)
 
-            # Start webhook if configured
-            if webhook_url and device_name and interval:
-                if webhook_thread is None or not webhook_thread.is_alive():
-                    start_webhook_thread()
-
-            # Kill Roblox processes and wait for 5 seconds
             print("Killing Roblox processes...")
             kill_roblox_processes()
             print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
