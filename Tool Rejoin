@@ -898,21 +898,52 @@ def edit_hwid_file(hwid_file_path):
     except Exception as e:
         print(Fore.RED + f"Error editing HWID file: {e}" + Style.RESET_ALL)
 
+def create_fluxus_bypass_link(hwid, api_key="XqzyaenZishd33axPYPz"):
+    return f"https://madkung.vercel.app/fluxus-api?url=https://flux.li/android/external/start.php?HWID={hwid}&api_key={api_key}"
 
-def bypass_key(hwid):
-    api_key = "XqzyaenZishd33axPYPz"  
-    url = f"madkung.vercel.app/fluxus-api?url=https://flux.li/android/external/start.php?HWID={hwid}&api_key={api_key}"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            print(Fore.GREEN + "Bypass key retrieved successfully!" + Style.RESET_ALL)
-            print(Fore.GREEN + f"Response: {response.text}" + Style.RESET_ALL)
-            return response.text
-        else:
-            print(Fore.RED + f"Failed to retrieve bypass key. Status code: {response.status_code}" + Style.RESET_ALL)
-    except Exception as e:
-        print(Fore.RED + f"Error calling API: {e}" + Style.RESET_ALL)
-    return None
+def decrement_time(time_str):
+    hours, minutes = map(int, time_str.replace('H', '').replace('M', '').split())
+    
+    if minutes > 0:
+        minutes -= 1
+    elif hours > 0:
+        hours -= 1
+        minutes = 59
+    else:
+        # If it's already "0H 0M", it stays the same
+        return "0H 0M"
+    
+    return f"{hours}H {minutes}M"
+
+def bypass_user_ids(accounts, executor_choice, minutes_left_dict=None):
+    bypassed_results = []
+
+    for package_name, user_id_or_name in accounts:
+        username = user_id_or_name if not user_id_or_name.isdigit() else get_username(user_id_or_name)
+
+        try:
+            if executor_choice == "2":  # Fluxus bypass
+                hwid = get_hwid(package_name)
+                if hwid:
+                    bypass_link = create_fluxus_bypass_link(hwid)
+                    try:
+                        response = requests.get(bypass_link)
+                        if response.status_code == 200:
+                            bypassed_results.append((package_name, response.json()))
+                            print(Fore.GREEN + f"{username}: Fluxus Bypass successful - {response.json()}" + Style.RESET_ALL)
+                        else:
+                            print(Fore.RED + f"{username}: Fluxus Bypass failed with status code {response.status_code}" + Style.RESET_ALL)
+                    except Exception as e:
+                        print(Fore.RED + f"{username}: Error during Fluxus Bypass - {str(e)}" + Style.RESET_ALL)
+                else:
+                    print(Fore.RED + f"{username}: Failed to retrieve HWID for Fluxus" + Style.RESET_ALL)
+
+        except Exception as bypass_error:
+            print(Fore.RED + f"Error during bypass for {package_name}: {bypass_error}" + Style.RESET_ALL)
+            # Continue with the rejoin process even if bypass fails.
+            continue
+
+    return bypassed_results
 
 detect_and_write_lua_script()
         
@@ -934,8 +965,8 @@ def main():
             "List",
             "Automatically Set Up User ID For Roblox Games",
             "Roblox Account Login Using Cookies",       
-            "Automatically Same Hwid For Fluxus",  
-            "Automatically Bypass Fluxus Executor Keys",       
+            "Automatically Same Hwid For Fluxus",
+            "Automatically Bypass Fluxus Executor Keys",         
             "Exit"
         ]
 
@@ -1270,20 +1301,200 @@ def main():
                     print(Fore.RED + f"Hwid Not Found On Your Device!" + Style.RESET_ALL)
 
         elif setup_type == "10":
-            packages = get_roblox_packages()  # Tự động lấy danh sách các package
-            if not packages:
-                print(Fore.RED + "Không tìm thấy package nào!" + Style.RESET_ALL)
-                continue  
-            
-            package_name = packages[0]  
-            print(Fore.GREEN + f"Đang sử dụng package: {package_name}" + Style.RESET_ALL)
+            accounts = load_accounts()
+            server_links = load_server_links()
+            last_bypass_time = time.time()
 
-            hwid, hwid_file_path = get_hwid(package_name)
-            if hwid:
-                bypass_key(hwid)  
-                setup_type = "1"
-            else:
-                print(Fore.RED + "Không tìm thấy HWID." + Style.RESET_ALL)
+            if not accounts:
+                print(Fore.RED + "No user IDs set up yet! Please set them up before proceeding." + Style.RESET_ALL)
+                continue
+
+            try:
+                force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
+                if force_rejoin_interval <= 0:
+                    raise ValueError("The interval must be a positive integer.")
+            except ValueError as ve:
+                print(Fore.RED + f"Invalid input: {ve}. Please enter a valid interval in minutes." + Style.RESET_ALL)
+                input(Fore.GREEN + "Press Enter to return to the menu..." + Style.RESET_ALL)
+                continue
+
+            print(Fore.GREEN + "Bypass for Fluxus selected." + Style.RESET_ALL)
+
+            # Choose the bypass interval based on user input (only for Fluxus)
+            print(Fore.GREEN + "Choose the bypass interval:" + Style.RESET_ALL)
+            print("1. Every 30 minutes")
+            print("2. Every 1 hour")
+            print("3. Every 2 hours")
+            print("4. Every 12 hours")
+            interval_choice = input("Enter your choice (1-4): ")
+            bypass_interval_mapping = {
+                '1': 30 * 60,  # 30 minutes in seconds
+                '2': 60 * 60,  # 1 hour in seconds
+                '3': 2 * 60 * 60,  # 2 hours in seconds
+                '4': 12 * 60 * 60  # 12 hours in seconds
+            }
+            bypass_interval = bypass_interval_mapping.get(interval_choice)
+            if not bypass_interval:
+                print(Fore.RED + "Invalid choice. Please enter a valid option." + Style.RESET_ALL)
+                continue
+
+            package_statuses = {}
+            for package_name, _ in server_links:
+                package_statuses[package_name] = {
+                    "Status": Fore.LIGHTCYAN_EX + "Initializing" + Style.RESET_ALL,
+                    "Username": get_username(accounts[server_links.index((package_name, _))][1]),
+                }
+
+            update_status_table(package_statuses)  # Initial table update
+
+            # Bypass the user IDs using Fluxus
+            for package_name, user_id in accounts:
+                hwid = get_hwid(package_name)
+                if hwid:
+                    bypass_link = create_fluxus_bypass_link(hwid)
+                    try:
+                        response = requests.get(bypass_link)
+                        if response.status_code == 200:
+                            bypass_result = response.json()
+                            package_statuses[package_name]["Status"] = Fore.GREEN + "Fluxus Bypass successful" + Style.RESET_ALL
+                        else:
+                            package_statuses[package_name]["Status"] = Fore.RED + f"Fluxus Bypass failed with status code {response.status_code}" + Style.RESET_ALL
+                    except Exception as e:
+                        package_statuses[package_name]["Status"] = Fore.RED + f"Error during Fluxus Bypass: {e}" + Style.RESET_ALL
+                else:
+                    package_statuses[package_name]["Status"] = Fore.RED + "Failed to retrieve HWID" + Style.RESET_ALL
+                update_status_table(package_statuses)
+
+            # Start webhook if configured
+            if webhook_url and device_name and interval:
+                if webhook_thread is None or not webhook_thread.is_alive():
+                    start_webhook_thread()
+
+            # Kill Roblox processes and wait for 5 seconds
+            print("Killing Roblox processes...")
+            kill_roblox_processes()
+            print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
+            time.sleep(5)
+            num_packages = len(server_links)
+
+            # Launch Roblox and check executor for each package
+            for package_name, server_link in server_links:
+                try:
+                    # Launch Roblox
+                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                    # Get the username for the executor check
+                    username = get_username(accounts[server_links.index((package_name, server_link))][1])
+
+                    # Check if executor is loaded, if not, rejoin
+                    reset_executor_file(username)
+
+                    # Ensure the tool waits for the executor to load before proceeding to the next package
+                    while True:
+                        if check_executor_status(username, continuous=False):
+                            package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
+                            update_status_table(package_statuses)
+                            break  # Break the loop and proceed to the next package
+
+                        # If the executor failed to load within 2 minutes, rejoin and retry
+                        else:
+                            print(f"Executor did not load for {package_name} (username: {username}). Rejoining...")
+                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                            update_status_table(package_statuses)
+                            kill_roblox_process(package_name)
+                            time.sleep(2)
+                            launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                except Exception as e:
+                    # Handle subprocess or launch error
+                    print(Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL)
+                    package_statuses[package_name]["Status"] = Fore.RED + "Launch failed" + Style.RESET_ALL
+                update_status_table(package_statuses)
+
+            start_time = time.time()
+            last_bypass_time = start_time
+
+            try:
+                while True:
+                    current_time = time.time()
+
+                    for package_name, user_id in accounts:
+                        username = get_username(user_id) or user_id
+                        presence_type, last_location_current = check_user_online(user_id)
+
+                        package_statuses[package_name]["Username"] = username
+
+                        if presence_type == 2:
+                            package_statuses[package_name]["Status"] = Fore.GREEN + "In-Game" + Style.RESET_ALL
+
+                            if not check_executor_status(username, continuous=False):  # If executor isn't detected as working
+                                print(f"Executor did not update for {package_name} (username: {username}). Rejoining...")
+                                package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                update_status_table(package_statuses)
+                                kill_roblox_process(package_name)
+                                time.sleep(2)
+                                launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                        else:
+                            if not is_roblox_running(package_name):
+                                package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
+                                kill_roblox_process(package_name)
+                                time.sleep(2)
+                                launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                # Check executor status after relaunch
+                                if not check_executor_status(username, continuous=False):
+                                    print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
+                                    package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                    kill_roblox_process(package_name)
+                                    time.sleep(2)
+                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                # If executor loaded successfully after relaunch
+                                else:
+                                    if last_location_current == "Website":
+                                        package_statuses[package_name]["Status"] = Fore.RED + "On Website, Rejoining" + Style.RESET_ALL
+                                        kill_roblox_process(package_name)
+                                        time.sleep(2)
+                                        launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                        # Check executor status after relaunch
+                                        if not check_executor_status(username, continuous=False):
+                                            print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
+                                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                            update_status_table(package_statuses)
+                                            kill_roblox_process(package_name)
+                                            time.sleep(2)
+                                            launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                    # If executor loaded successfully after relaunch
+                                    else:
+                                        package_statuses[package_name]["Status"] = Fore.GREEN + "Executor loaded successfully after rejoin" + Style.RESET_ALL
+                                        update_status_table(package_statuses)
+                            else:
+                                package_statuses[package_name]["Status"] = Fore.YELLOW + "Not In-Game, Recently Active" + Style.RESET_ALL
+
+                        update_status_table(package_statuses)
+                        time.sleep(25)  # Adjust the delay time as needed
+
+                    # Perform Fluxus bypass operation at specified intervals
+                    if current_time - last_bypass_time >= bypass_interval:
+                        print("Performing Fluxus bypass operation...")
+                        bypass_results = bypass_user_ids(accounts, "2")  # No need to pass minutes_left_dict
+                        last_bypass_time = current_time
+
+                    time.sleep(90)  # Wait 90 seconds before the next loop iteration
+
+                    if current_time - start_time >= force_rejoin_interval:
+                        print("Force killing Roblox processes due to time limit.")
+                        kill_roblox_processes()
+                        start_time = current_time  # Reset start_time to current time after killing processes
+
+            except KeyboardInterrupt:
+                print(Fore.RED + "Program terminated by user. Cleaning up..." + Style.RESET_ALL)
+                kill_roblox_processes()
+                input(Fore.GREEN + "Press Enter to exit..." + Style.RESET_ALL)
+                continue
 
         elif setup_type == "11":
             break 
