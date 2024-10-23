@@ -1244,24 +1244,21 @@ def main():
             inject_cookies_and_appstorage()
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
 
-    if choice == '9':
-        packages = get_roblox_packages()
+        elif setup_type == '9':
+            packages = get_roblox_packages()
 
-        if not packages:
-            print(Fore.RED + "No Roblox packages found on your device!" + Style.RESET_ALL)
-            return
+            if not packages:
+                print(Fore.RED + "No Roblox packages found on your device!" + Style.RESET_ALL)
+                return
 
-        for package_name in packages:
-            print(Fore.GREEN + f"Processing package: {package_name}" + Style.RESET_ALL)
-            
-            hwid_file_path = get_hwid_file_path(package_name)
-            if hwid_file_path:
-                edit_hwid_file(hwid_file_path)
-            else:
-                print(Fore.RED + f"No HWID file found for {package_name}." + Style.RESET_ALL)
+            for package_name in packages:
+                print(Fore.GREEN + f"Processing package: {package_name}" + Style.RESET_ALL)
 
-    else:
-        print("Invalid choice. Exiting.")
+                hwid_file_path = get_hwid_file_path(package_name)
+                if hwid_file_path:
+                    edit_hwid_file(hwid_file_path)
+                else:
+                    print(Fore.RED + f"No HWID file found for {package_name}." + Style.RESET_ALL)
 
         elif setup_type == "10":
             break 
