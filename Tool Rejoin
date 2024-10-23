@@ -809,31 +809,30 @@ def save_cache():
 def check_user_online(user_id):
     max_retries = 3
     delay = 2
-    primary_url = "https://presence.roblox.com/v1/presence/users"
-    headers = {'Content-Type': 'application/json'}
-    payload = {"userIds": [user_id]}
-    
+
     for attempt in range(max_retries):
         try:
+            primary_url = "https://presence.roblox.com/v1/presence/users"
+            headers = {'Content-Type': 'application/json'}
+            body = json.dumps({"userIds": [user_id]})
             with requests.Session() as session:
-                response = session.post(primary_url, headers=headers, json=payload, timeout=7)
-            response.raise_for_status()
-            data = response.json()
-            presence = data["userPresences"][0]
-            presence_type = presence["userPresenceType"]
-            last_location = presence.get("lastLocation", None)
+                primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
+            primary_response.raise_for_status()
+            primary_data = primary_response.json()
+            primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
+            primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
 
-            if last_location == "Website":
-                print(Fore.YELLOW + f"{user_id} Is Still On The Interface But Not In The Game, Start Rejoining Again..." + Style.RESET_ALL)
-                return 0, last_location  
+            if primary_last_location == "Website":
+                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
+                primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
 
-            return presence_type, last_location
+            return primary_presence_type, primary_last_location
 
         except requests.exceptions.RequestException as e:
-            print(Fore.RED + f"An Error Occurred While Checking Online" + Style.RESET_ALL)
+            print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
             if attempt < max_retries - 1:
                 time.sleep(delay)
-                delay *= 2  
+                delay *= 2  # Exponential backoff
             else:
                 return None, None
 
