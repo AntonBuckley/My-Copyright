@@ -85,22 +85,26 @@ def clear_screen():
 
 def print_rainbow_header():
     header = r"""
-____  ___                           ___ ___         ___.    
-\   \/  /  ____  _______   ____    /   |   \  __ __ \_ |__  
- \     / _/ __ \ \_  __ \ /  _ \  /    ~    \|  |  \ | __ \ 
- /     \ \  ___/  |  | \/(  <_> ) \    Y    /|  |  / | \_\ \
-/___/\  \ \___  > |__|    \____/   \___|_  / |____/  |___  /
-      \_/     \/                         \/              \/ 
+___________.__                     __   .__                   __________              __         .__         
+\_   _____/|  |    ____  _____   _/  |_ |__|  ____     ____   \______   \  ____      |__|  ____  |__|  ____  
+ |    __)  |  |   /  _ \ \__  \  \   __\|  | /    \   / ___\   |       _/_/ __ \     |  | /  _ \ |  | /    \ 
+ |     \   |  |__(  <_> ) / __ \_ |  |  |  ||   |  \ / /_/  >  |    |   \\  ___/     |  |(  <_> )|  ||   |  \
+ \___  /   |____/ \____/ (____  / |__|  |__||___|  / \___  /   |____|_  / \___  >/\__|  | \____/ |__||___|  /
+     \/                       \/                 \/ /_____/           \/      \/ \______|                 \/          
 """
-    color = Fore.RED
+    colors = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
+    color_index = 0
 
     for line in header.splitlines():
         for char in line:
-            print(color + char, end='')
-        print(Style.RESET_ALL)  
+            print(colors[color_index % len(colors)] + char, end='')
+            color_index += 1
+            if color_index % 10 == 0:
+                time.sleep(0.01)  
+        print(Style.RESET_ALL)
 
     print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
-    print(Fore.LIGHTMAGENTA_EX + "Version: 1" + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Version: 2" + Style.RESET_ALL)
 
 print_rainbow_header()
 
@@ -394,8 +398,8 @@ def replace_cookie_value_in_db(db_path, new_cookie_value):
         print(Fore.RED + f"Error replacing cookie value in database: {e}" + Style.RESET_ALL)
 
 def inject_cookies_and_appstorage():
-    db_url = "pastefy.app/Zp5Xvugv/raw"
-    appstorage_url = "https://pastefy.app/ZoSHLfaG/raw"  
+    db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies"  # Keep this as binary
+    appstorage_url = "https://raw.githubusercontent.com/shirooscripts/auto-rj/main/appStorage.json"  # Use this for JSON
 
     downloaded_db_path = download_file(db_url, "Cookies.db", binary=True)
     downloaded_appstorage_path = download_file(appstorage_url, "appStorage.json", binary=False)
@@ -864,7 +868,6 @@ def get_hwid(package_name):
         return None
 
     try:
-        # Đọc nội dung HWID từ file
         with open(hwid_file_path, "r") as file:
             hwid = file.read().strip()
             print(Fore.GREEN + f"HWID found: {hwid}" + Style.RESET_ALL)
@@ -895,6 +898,22 @@ def edit_hwid_file(hwid_file_path):
     except Exception as e:
         print(Fore.RED + f"Error editing HWID file: {e}" + Style.RESET_ALL)
 
+
+def bypass_key(hwid):
+    api_key = "XqzyaenZishd33axPYPz"  
+    url = f"madkung.vercel.app/fluxus-api?url=https://flux.li/android/external/start.php?HWID={hwid}&api_key={api_key}"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            print(Fore.GREEN + "Bypass key retrieved successfully!" + Style.RESET_ALL)
+            print(Fore.GREEN + f"Response: {response.text}" + Style.RESET_ALL)
+            return response.text
+        else:
+            print(Fore.RED + f"Failed to retrieve bypass key. Status code: {response.status_code}" + Style.RESET_ALL)
+    except Exception as e:
+        print(Fore.RED + f"Error calling API: {e}" + Style.RESET_ALL)
+    return None
+
 detect_and_write_lua_script()
         
 def main():
@@ -915,7 +934,8 @@ def main():
             "List",
             "Automatically Set Up User ID For Roblox Games",
             "Roblox Account Login Using Cookies",       
-            "Automatically Same Hwid For Fluxus",      
+            "Automatically Same Hwid For Fluxus",  
+            "Automatically Bypass Fluxus Executor Keys",       
             "Exit"
         ]
 
@@ -1250,9 +1270,25 @@ def main():
                     print(Fore.RED + f"Hwid Not Found On Your Device!" + Style.RESET_ALL)
 
         elif setup_type == "10":
+            packages = get_roblox_packages()  # Tự động lấy danh sách các package
+            if not packages:
+                print(Fore.RED + "Không tìm thấy package nào!" + Style.RESET_ALL)
+                continue  
+            
+            package_name = packages[0]  
+            print(Fore.GREEN + f"Đang sử dụng package: {package_name}" + Style.RESET_ALL)
+
+            hwid, hwid_file_path = get_hwid(package_name)
+            if hwid:
+                bypass_key(hwid)  
+                setup_type = '1'  
+            else:
+                print(Fore.RED + "Không tìm thấy HWID." + Style.RESET_ALL)
+
+        elif setup_type == "11":
             break 
 
 if __name__ == "__main__":
-    load_cache()  # Load the cache at the start
+    load_cache()  
     main()  # Run the main function
-    save_cache()  # Save the cache before exiting
+    save_cache()  
