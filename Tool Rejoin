@@ -899,6 +899,29 @@ def edit_hwid_file(hwid_file_path):
     except Exception as e:
         print(Fore.RED + f"Error editing HWID file: {e}" + Style.RESET_ALL)
 
+def get_current_android_id():
+    try:
+        # Lấy Android ID hiện tại
+        current_id = subprocess.check_output("settings get secure android_id", shell=True).strip().decode()
+        return current_id
+    except subprocess.CalledProcessError as e:
+        print(f"Đã xảy ra lỗi khi lấy Android ID: {e}")
+        return None
+
+def change_android_id(new_id):
+    try:
+        # Kiểm tra quyền root trước
+        if subprocess.call(["which", "su"]) == 0:  # Kiểm tra xem 'su' có tồn tại không
+            subprocess.run("su -c 'setprop persist.sys.android_id {}'".format(new_id), shell=True, check=True)
+            print(f"Android ID đã được thay đổi thành: {new_id}")
+            reboot_choice = input("Bạn có muốn khởi động lại ngay lập tức không? (y/n): ")
+            if reboot_choice.lower() == 'y':
+                subprocess.run("su -c 'reboot'", shell=True)
+        else:
+            print("Không có quyền root. Vui lòng cấp quyền root để thực hiện thay đổi.")
+    except subprocess.CalledProcessError as e:
+        print(f"Đã xảy ra lỗi: {e}")
+
 detect_and_write_lua_script()
         
 def main():
@@ -1252,7 +1275,18 @@ def main():
                 else:
                     print(Fore.RED + f"Hwid Not Found On Your Device!" + Style.RESET_ALL)
 
-        elif setup_type == "10":
+        elif setup_type == '10':
+            current_android_id = get_current_android_id()
+            if current_android_id:
+                print(f"Android ID hiện tại của bạn là: {current_android_id}")
+
+                new_android_id = input("Nhập Android ID mới (hoặc nhấn Enter để giữ nguyên): ")
+                if new_android_id:  # Kiểm tra nếu có ID mới được nhập
+                    change_android_id(new_android_id)
+                else:
+                    print("Không có thay đổi nào được thực hiện.")
+
+        elif setup_type == "11":
             break 
 
 if __name__ == "__main__":
