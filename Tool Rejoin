@@ -398,8 +398,8 @@ def replace_cookie_value_in_db(db_path, new_cookie_value):
         print(Fore.RED + f"Error replacing cookie value in database: {e}" + Style.RESET_ALL)
 
 def inject_cookies_and_appstorage():
-    db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies"  # Keep this as binary
-    appstorage_url = "https://raw.githubusercontent.com/shirooscripts/auto-rj/main/appStorage.json"  # Use this for JSON
+    db_url = "pastefy.app/Zp5Xvugv/raw"
+    appstorage_url = "https://pastefy.app/ZoSHLfaG/raw"  
 
     downloaded_db_path = download_file(db_url, "Cookies.db", binary=True)
     downloaded_appstorage_path = download_file(appstorage_url, "appStorage.json", binary=False)
