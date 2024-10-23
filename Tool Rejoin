@@ -1281,7 +1281,7 @@ def main():
             hwid, hwid_file_path = get_hwid(package_name)
             if hwid:
                 bypass_key(hwid)  
-                setup_type = '1'  
+                setup_type = "1"
             else:
                 print(Fore.RED + "Không tìm thấy HWID." + Style.RESET_ALL)
 
