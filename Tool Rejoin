@@ -586,7 +586,7 @@ def background_executor_monitor(package_name, username, package_statuses, server
             if not check_executor_status(username, continuous=False):
                 # Increment retry count
                 retry_count += 1
-                package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                package_statuses[package_name]["Status"] = Fore.RED + "Your Roblox Game Is Shut Down Or Not Showing UI, Rejoining..." + Style.RESET_ALL
                 update_status_table(package_statuses)
                 
                 # Check if retry limit reached to prevent endless rejoining
@@ -595,7 +595,6 @@ def background_executor_monitor(package_name, username, package_statuses, server
                     update_status_table(package_statuses)
                     break
 
-                # Acquire lock to ensure only one Roblox process is relaunched at a time
                 with rejoin_lock:
                     # Rejoin by killing the current Roblox process and relaunching
                     kill_roblox_process(package_name)
