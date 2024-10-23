@@ -109,7 +109,7 @@ ___________.__                     __   .__                   __________        
         print(Style.RESET_ALL)
 
     print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
-    print(Fore.LIGHTMAGENTA_EX + "Version: 3" + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Version: 2" + Style.RESET_ALL)
 
 print_rainbow_header()
 
@@ -117,7 +117,6 @@ def detect_and_write_lua_script():
     detected_executors = []
 
     for executor_name, base_path in executors.items():
-        # Define all possible paths for Autoexec/Autoexecute
         possible_autoexec_paths = [
             os.path.join(base_path, "Autoexec"),
             os.path.join(base_path, "Autoexecute")
@@ -125,7 +124,6 @@ def detect_and_write_lua_script():
 
         lua_written = False  # To track if Lua file is successfully written
 
-        # Loop through Autoexec and Autoexecute paths
         for path in possible_autoexec_paths:
             if os.path.exists(path):
                 # Lua script path
@@ -503,15 +501,15 @@ def is_roblox_running(package_name):
     return False
 
 def kill_roblox_processes():
-    print("Killing all Roblox processes...")
+    print(Fore.YELLOW + "In Progress Turning Off All Roblox Games On Your Device..." + Style.RESET_ALL)
     package_names = get_roblox_packages()
     for package_name in package_names:
-        print(f"Trying to kill process for package: {package_name}")
+        print(Fore.GREEN + f"Roblox Game Shutdown In Progress For Package Is: {package_name}" + Style.RESET_ALL)
         os.system(f"pkill -f {package_name}")
     time.sleep(2) 
 
 def kill_roblox_process(package_name):
-    print(f"Killing Roblox process for {package_name}...")
+    print(Fore.YELLOW + f"Roblox Game Shutdown In Progress For Package Is: {package_name}" + Style.RESET_ALL)
     os.system(f"pkill -f {package_name}")
     time.sleep(2) 
 
@@ -544,40 +542,44 @@ def check_executor_and_rejoin(package_name, username, package_statuses, server_l
         if detected_executors:
             print(f"Checking executor status for {package_name} with username {username}...")
 
-            # Keep checking for the executor status, up to 2 minutes (every 10 seconds)
-            start_time = time.time()
+            # Timeout for executor loading (2 minutes)
             executor_loaded = False
-            while time.time() - start_time < 120:  # 2 minutes timeout
+            timeout = 120
+            check_interval = 10
+            start_time = time.time()
+
+            while time.time() - start_time < timeout:
                 if check_executor_status(username):
                     package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
                     executor_loaded = True
                     break
-                time.sleep(10)
+                time.sleep(check_interval)
 
-            # If executor didn't load within the timeout, rejoin
             if not executor_loaded:
-                print(f"Executor did not load for {package_name} (username: {username}). Rejoining...")
-                package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                # Rejoin process if executor failed to load
+                package_statuses[package_name]["Status"] = Fore.RED + f"Executor failed for {username}, rejoining..." + Style.RESET_ALL
                 update_status_table(package_statuses)
 
-                # Rejoin by killing the current Roblox process and relaunching
                 kill_roblox_process(package_name)
                 time.sleep(2)
                 launch_roblox(package_name, server_link, num_packages, package_statuses)
-                check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts)
-        else:
-            # No executor was detected; proceed without rejoining
-            print(f"No executor detected for {package_name} (username: {username}).")
-            package_statuses[package_name]["Status"] = Fore.GREEN + f"Joined without executor for {username}" + Style.RESET_ALL
-            update_status_table(package_statuses)
+                return check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts)
 
-        # Start the background executor monitor after joining
-        monitor_thread = threading.Thread(target=background_executor_monitor, args=(package_name, username, package_statuses, server_link, num_packages))
-        monitor_thread.daemon = True  # Ensures the thread closes when the main program exits
-        monitor_thread.start()
+        else:
+            # No executor detected, proceed normally
+            package_statuses[package_name]["Status"] = Fore.GREEN + f"Joined without executor for {username}" + Style.RESET_ALL
+
+        update_status_table(package_statuses)
+
+        # Start background executor monitoring after joining
+        threading.Thread(
+            target=background_executor_monitor,
+            args=(package_name, username, package_statuses, server_link, num_packages),
+            daemon=True
+        ).start()
 
     except Exception as e:
-        package_statuses[package_name]["Status"] = Fore.RED + f"Error checking executor for {package_name}: {e}" + Style.RESET_ALL
+        package_statuses[package_name]["Status"] = Fore.RED + f"Error checking executor: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
 
 def background_executor_monitor(package_name, username, package_statuses, server_link, num_packages, retry_limit=3):
@@ -793,7 +795,6 @@ def save_username(user_id, username):
     except (IOError, json.JSONDecodeError) as e:
         print(Fore.RED + f"Error saving username: {e}" + Style.RESET_ALL)
 
-# Example of loading the username from persistent storage
 def load_saved_username(user_id):
     try:
         with open("usernames.json", "r") as file:
@@ -809,7 +810,6 @@ def load_cache():
         with open(CACHE_FILE, "r") as f:
             username_cache = json.load(f)
 
-# Save the cache to file
 def save_cache():
     try:
         temp_file = CACHE_FILE + ".tmp"
@@ -822,32 +822,90 @@ def save_cache():
 def check_user_online(user_id):
     max_retries = 3
     delay = 2
-
+    primary_url = "https://presence.roblox.com/v1/presence/users"
+    headers = {'Content-Type': 'application/json'}
+    payload = {"userIds": [user_id]}
+    
     for attempt in range(max_retries):
         try:
-            primary_url = "https://presence.roblox.com/v1/presence/users"
-            headers = {'Content-Type': 'application/json'}
-            body = json.dumps({"userIds": [user_id]})
             with requests.Session() as session:
-                primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
-            primary_response.raise_for_status()
-            primary_data = primary_response.json()
-            primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
-            primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
+                response = session.post(primary_url, headers=headers, json=payload, timeout=7)
+            response.raise_for_status()
+            data = response.json()
+            presence = data["userPresences"][0]
+            presence_type = presence["userPresenceType"]
+            last_location = presence.get("lastLocation", None)
 
-            if primary_last_location == "Website":
-                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
-                primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
+            if last_location == "Website":
+                print(Fore.YELLOW + f"{user_id} Is Still On The Interface But Not In The Game, Start Rejoining Again..." + Style.RESET_ALL)
+                return 0, last_location  
 
-            return primary_presence_type, primary_last_location
+            return presence_type, last_location
 
         except requests.exceptions.RequestException as e:
-            print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
+            print(Fore.RED + f"An Error Occurred While Checking Online" + Style.RESET_ALL)
             if attempt < max_retries - 1:
                 time.sleep(delay)
                 delay *= 2  
             else:
                 return None, None
+
+def get_hwid_file_path(package_name):
+    directory = f"/data/data/{package_name}/app_assets/content/"
+    try:
+        files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+
+        if not files:
+            print(Fore.RED + "No files found in the specified directory." + Style.RESET_ALL)
+            return None
+
+        last_file = files[-1]
+        hwid_file_path = os.path.join(directory, last_file)
+        return hwid_file_path
+            
+    except Exception as e:
+        print(Fore.RED + f"Error retrieving HWID file path: {e}" + Style.RESET_ALL)
+        return None
+
+def get_hwid(package_name):
+    hwid_file_path = get_hwid_file_path(package_name)
+    
+    if hwid_file_path is None:
+        return None
+
+    try:
+        # Đọc nội dung HWID từ file
+        with open(hwid_file_path, "r") as file:
+            hwid = file.read().strip()
+            print(Fore.GREEN + f"HWID found: {hwid}" + Style.RESET_ALL)
+            return hwid, hwid_file_path  # Trả về cả HWID và đường dẫn file
+            
+    except Exception as e:
+        print(Fore.RED + f"Error retrieving HWID: {e}" + Style.RESET_ALL)
+        return None, None
+
+# Hàm để chỉnh sửa file HWID
+def edit_hwid_file(hwid_file_path):
+    try:
+        # Đọc nội dung hiện tại của file
+        with open(hwid_file_path, 'r') as file:
+            content = file.read().strip()
+        
+        print(Fore.YELLOW + f"Current HWID content: {content}" + Style.RESET_ALL)
+        
+        # Yêu cầu người dùng nhập nội dung mới để thay thế HWID
+        new_content = input("Enter new HWID content (or press Enter to keep the current content): ")
+        
+        if new_content.strip():  # Nếu có nội dung mới
+            # Ghi nội dung mới vào file
+            with open(hwid_file_path, 'w') as file:
+                file.write(new_content.strip())
+            print(Fore.GREEN + f"HWID file updated successfully with new content: {new_content}" + Style.RESET_ALL)
+        else:
+            print(Fore.YELLOW + "No changes made to the HWID file." + Style.RESET_ALL)
+            
+    except Exception as e:
+        print(Fore.RED + f"Error editing HWID file: {e}" + Style.RESET_ALL)
 
 detect_and_write_lua_script()
         
@@ -857,8 +915,8 @@ def main():
     
     print_rainbow_header()
     while True:
-        clear_screen()  # Clear screen each time to avoid overlapping
-        print_rainbow_header()  # Always print the header
+        clear_screen()  
+        print_rainbow_header() 
 
         menu_options = [
             "Start Auto Rejoin Roblox Game",
@@ -1186,7 +1244,26 @@ def main():
             inject_cookies_and_appstorage()
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
 
-        elif setup_type == "9":
+    if choice == '9':
+        packages = get_roblox_packages()
+
+        if not packages:
+            print(Fore.RED + "No Roblox packages found on your device!" + Style.RESET_ALL)
+            return
+
+        for package_name in packages:
+            print(Fore.GREEN + f"Processing package: {package_name}" + Style.RESET_ALL)
+            
+            hwid_file_path = get_hwid_file_path(package_name)
+            if hwid_file_path:
+                edit_hwid_file(hwid_file_path)
+            else:
+                print(Fore.RED + f"No HWID file found for {package_name}." + Style.RESET_ALL)
+
+    else:
+        print("Invalid choice. Exiting.")
+
+        elif setup_type == "10":
             break 
 
 if __name__ == "__main__":
