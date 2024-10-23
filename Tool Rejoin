@@ -919,8 +919,7 @@ def main():
             "List",
             "Automatically Set Up User ID For Roblox Games",
             "Roblox Account Login Using Cookies",       
-            "Automatically Same Hwid For Fluxus",  
-            "Automatically Same Hwid For Codex And Arceus X NEO",       
+            "Automatically Same Hwid For Fluxus",      
             "Exit"
         ]
 
