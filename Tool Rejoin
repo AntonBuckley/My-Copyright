@@ -99,8 +99,8 @@ ____  ___                           ___ ___         ___.
             print(color + char, end='')
         print(Style.RESET_ALL)
 
-    print(Fore.RED + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
-    print(Fore.RED + "Version: 1" + Style.RESET_ALL)
+print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
+print(Fore.LIGHTMAGENTA_EX + "Version: 1" + Style.RESET_ALL)
 
 print_rainbow_header()
 
