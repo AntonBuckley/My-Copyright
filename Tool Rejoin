@@ -884,10 +884,8 @@ def get_hwid(package_name):
         print(Fore.RED + f"Error retrieving HWID: {e}" + Style.RESET_ALL)
         return None, None
 
-# Hàm để chỉnh sửa file HWID
 def edit_hwid_file(hwid_file_path):
     try:
-        # Đọc nội dung hiện tại của file
         with open(hwid_file_path, 'r') as file:
             content = file.read().strip()
         
@@ -926,8 +924,7 @@ def main():
             "Clear User IDs And/Or Private Server Links",
             "List",
             "Automatically Set Up User ID For Roblox Games",
-            "Roblox Account Login Using Cookies",    
-            "Auto Same Hwid For Fluxus Executor",     
+            "Roblox Account Login Using Cookies",            
             "Exit"
         ]
 
@@ -947,7 +944,7 @@ def main():
                 continue
 
             try:
-                force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
+                force_rejoin_interval = int(input(Fore.CYAN + "Please Enter Required Time To Kill/Rejoin For Roblox Game: " + Style.RESET_ALL)) * 60
                 if force_rejoin_interval <= 0:
                     raise ValueError("The interval must be a positive integer.")
             except ValueError as ve:
@@ -1249,17 +1246,17 @@ def main():
             packages = get_roblox_packages()
 
             if not packages:
-                print(Fore.RED + "No Roblox packages found on your device!" + Style.RESET_ALL)
+                print(Fore.RED + "Package Not Found On Your Device, Please Check And Try Again Late" + Style.RESET_ALL)
                 return
 
             for package_name in packages:
-                print(Fore.GREEN + f"Processing package: {package_name}" + Style.RESET_ALL)
+                print(Fore.GREEN + f"Edited Hwid For Package Is: {package_name}" + Style.RESET_ALL)
 
                 hwid_file_path = get_hwid_file_path(package_name)
                 if hwid_file_path:
                     edit_hwid_file(hwid_file_path)
                 else:
-                    print(Fore.RED + f"No HWID file found for {package_name}." + Style.RESET_ALL)
+                    print(Fore.RED + f"Hwid Not Found On Your Device!" + Style.RESET_ALL)
 
         elif setup_type == "10":
             break 
