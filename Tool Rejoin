@@ -888,6 +888,14 @@ def edit_hwid_file(hwid_file_path):
     except Exception as e:
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
 
+def change_android_id(new_id):
+    try:
+        command = f"settings put secure android_id {new_id}"
+        subprocess.run(command, shell=True, check=True)
+        print(Fore.GREEN + f"Android ID đã được thay đổi thành: {new_id}" + Style.RESET_ALL)
+    except subprocess.CalledProcessError as e:
+        print(Fore.RED + f"Đã xảy ra lỗi khi thay đổi Android ID: {e}" + Style.RESET_ALL)
+
 def run_process(package_name, minutes):
     hwid, hwid_file_path = get_hwid(package_name)
     
@@ -916,7 +924,7 @@ def run_process(package_name, minutes):
     time.sleep(minutes * 60)
     
     input(Fore.CYAN + "\nPlease Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
-    main() 
+    return main()
 
 detect_and_write_lua_script()
         
