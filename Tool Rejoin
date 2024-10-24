@@ -891,29 +891,35 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"Error editing HWID file: {e}" + Style.RESET_ALL)
 
 def run_process(package_name, minutes):
-    while True:
-        hwid, hwid_file_path = get_hwid(package_name)
-        if hwid is None:
-            print(Fore.RED + "HWID not found. Exiting..." + Style.RESET_ALL)
-            return
-
-        try:
-            webbrowser.open(f"file://{hwid_file_path}")
-        except Exception as e:
-            print(Fore.RED + f"Error opening file: {e}" + Style.RESET_ALL)
-
-        api_url = f"https://stickx.top/api-fluxus/?hwid={hwid}&api_key=E99l9NOctud3vmu6bPne"
-        try:
-            response = requests.get(api_url)
-            print(Fore.GREEN + f"API Response: {response.text}" + Style.RESET_ALL)
-        except Exception as e:
-            print(Fore.RED + f"Error calling API: {e}" + Style.RESET_ALL)
-
-        setup_type = "1"
-        print(Fore.YELLOW + f"Setup type is set to: {setup_type}" + Style.RESET_ALL)
-
-        print(Fore.CYAN + f"Waiting {minutes} minute(s) before rerunning..." + Style.RESET_ALL)
-        time.sleep(minutes * 60)
+    # Lấy HWID và đường dẫn file HWID
+    hwid, hwid_file_path = get_hwid(package_name)
+    
+    if hwid is None or hwid_file_path is None:
+        print(Fore.RED + "Failed to retrieve HWID or HWID file path." + Style.RESET_ALL)
+        return
+    
+    # URL của API với HWID được chèn vào
+    url = f"https://madkung.vercel.app/fluxus-api?url=https://flux.li/android/external/start.php?HWID={hwid}&api_key=XqzyaenZishd33axPYPz"
+    print(Fore.YELLOW + f"Sending request to: {url}" + Style.RESET_ALL)
+    
+    try:
+        # Gửi yêu cầu đến API
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            print(Fore.GREEN + "API call successful!" + Style.RESET_ALL)
+            print("Response:", response.json())  # Hiển thị kết quả trả về
+        else:
+            print(Fore.RED + f"API call failed with status code: {response.status_code}" + Style.RESET_ALL)
+    
+    except Exception as e:
+        print(Fore.RED + f"An error occurred during the API call: {e}" + Style.RESET_ALL)
+        return
+    
+    # Đợi khoảng thời gian đã nhập trước khi chạy lại quá trình
+    print(Fore.CYAN + f"Waiting for {minutes} minute(s) before rerunning the process..." + Style.RESET_ALL)
+    time.sleep(minutes * 60)
+    run_process(package_name, minutes)
 
 detect_and_write_lua_script()
         
