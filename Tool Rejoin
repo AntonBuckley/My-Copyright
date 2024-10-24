@@ -913,13 +913,28 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
 
-def change_android_id(new_android_id):
+def change_android_id_sqlite(new_android_id):
     try:
-        # Đổi Android ID
-        os.system(f"su -c 'settings put secure android_id {new_android_id}'")
-        print(Fore.GREEN + f"Android ID Has Been Changed Successfully: {new_android_id}" + Style.RESET_ALL)
+        # Đường dẫn tới file settings.db (yêu cầu thiết bị root)
+        settings_db_path = "/data/data/com.android.providers.settings/databases/settings.db"
+
+        # Kiểm tra quyền truy cập vào file settings.db
+        if not os.path.exists(settings_db_path):
+            print("Không thể tìm thấy file settings.db hoặc không có quyền truy cập!")
+            return
+        
+        # Kết nối tới SQLite database
+        conn = sqlite3.connect(settings_db_path)
+        cursor = conn.cursor()
+
+        # Thực hiện lệnh SQL để thay đổi Android ID
+        cursor.execute("UPDATE secure SET value = ? WHERE name = 'android_id'", (new_android_id,))
+        conn.commit()
+        conn.close()
+
+        print(f"Android ID đã được thay đổi thành: {new_android_id}")
     except Exception as e:
-        print(Fore.RED + f"An Error Occurred While Changing Android ID, Status Code Is: {e}"+ Style.RESET_ALL)
+        print(f"Lỗi khi thay đổi Android ID: {e}")
 
 detect_and_write_lua_script() 
 
@@ -1287,7 +1302,7 @@ def main():
 
         elif setup_type == "11":
             new_android_id = input(Fore.CYAN + "Please Enter The New Android ID You Want To Change To Same Hwid For Arceus X NEO And Codex: " + Style.RESET_ALL)
-            change_android_id(new_android_id)
+            change_android_id_sqlite(new_android_id)
             input(Fore.CYAN + "Please Click Enter To Return To The Main Menu Of The Tool..." + Style.RESET_ALL) 
 
         elif setup_type == "12":
