@@ -869,26 +869,6 @@ def get_hwid(package_name):
         print(Fore.RED + f"An Error Occurred While Retrieving Your Hwid!" + Style.RESET_ALL)
         return None, None
 
-def edit_hwid_file(hwid_file_path):
-    try:
-        with open(hwid_file_path, 'r') as file:
-            content = file.read().strip()
-        
-        print(Fore.YELLOW + f"Current HWID Content: {content}" + Style.RESET_ALL)
-        
-        new_content = input(Fore.CYAN + "Please Enter The Hwid You Want To Adjust To Same Hwid In Fluxus Executr On Your Device(Press Enter To Keep The Old Hwid): " + Style.RESET_ALL)
-        
-        if new_content.strip(): 
-            with open(hwid_file_path, 'w') as file:
-                file.write(new_content.strip())
-            print(Fore.GREEN + f"Hwid Has Been Successfully Edited As You Want And Now It Is Same Hwid: {new_content}" + Style.RESET_ALL)
-        else:
-            print(Fore.RED + "Hwid Unedited In Fluxus Executor" + Style.RESET_ALL)
-            
-    except Exception as e:
-        print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
-        return None
-
 def run_process(package_name, minutes):
     hwid, hwid_file_path = get_hwid(package_name)
     
@@ -914,7 +894,29 @@ def run_process(package_name, minutes):
     
     time.sleep(minutes * 60) 
     print(Fore.CYAN + f"Please Wait {minutes} Minute To Bypass Again..." + Style.RESET_ALL)
-    return main()
+
+    main()
+    return
+
+def edit_hwid_file(hwid_file_path):
+    try:
+        with open(hwid_file_path, 'r') as file:
+            content = file.read().strip()
+        
+        print(Fore.YELLOW + f"Current HWID Content: {content}" + Style.RESET_ALL)
+        
+        new_content = input(Fore.CYAN + "Please Enter The Hwid You Want To Adjust To Same Hwid In Fluxus Executr On Your Device(Press Enter To Keep The Old Hwid): " + Style.RESET_ALL)
+        
+        if new_content.strip(): 
+            with open(hwid_file_path, 'w') as file:
+                file.write(new_content.strip())
+            print(Fore.GREEN + f"Hwid Has Been Successfully Edited As You Want And Now It Is Same Hwid: {new_content}" + Style.RESET_ALL)
+        else:
+            print(Fore.RED + "Hwid Unedited In Fluxus Executor" + Style.RESET_ALL)
+            
+    except Exception as e:
+        print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
+        return None
 
 detect_and_write_lua_script()
         
@@ -1281,6 +1283,7 @@ def main():
                 package_name = packages[0] 
                 minutes = int(input(Fore.CYAN + "Please Enter Time To Automatically Bypass(Minute): " + Style.RESET_ALL))
                 run_process(package_name, minutes)
+
             input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
         elif setup_type == "11":
