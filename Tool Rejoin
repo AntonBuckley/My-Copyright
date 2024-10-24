@@ -913,6 +913,14 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
 
+def change_android_id(new_android_id):
+    try:
+        # Đổi Android ID
+        os.system(f"su -c 'settings put secure android_id {new_android_id}'")
+        print(Fore.GREEN + f"Android ID Has Been Changed Successfully: {new_android_id}" + Style.RESET_ALL)
+    except Exception as e:
+        print(Fore.RED + f"An Error Occurred While Changing Android ID, Status Code Is: {e}"+ Style.RESET_ALL)
+
 detect_and_write_lua_script() 
 
 def main():
@@ -934,7 +942,8 @@ def main():
             "Automatically Set Up User ID For Roblox Games",
             "Roblox Account Login Using Cookies",       
             "Automatically Same Hwid For Fluxus",
-            "Automatically Bypass Fluxus Executor Keys",         
+            "Automatically Bypass Fluxus Executor Keys",      
+            "Automatically Same Hwid For Arceus X NEO And Codex",     
             "Exit"
         ]
 
@@ -1272,11 +1281,16 @@ def main():
             else:
                 print(Fore.GREEN + "Package Found on Your Device: " + ", ".join(packages) + Style.RESET_ALL)
                 package_name = packages[0] 
-                minutes = int(input(Fore.CYAN + "Please Enter Bypass Time Command Again: " + Style.RESET_ALL)) * 60
+                minutes = int(input(Fore.CYAN + "Please Enter Required Time To Kill/Rejoin For Roblox Game: " + Style.RESET_ALL)) * 60
                 run_process(package_name, minutes)
-            input(Fore.CYAN + "Click Here To Go To Main Menu.." + Style.RESET_ALL) 
+            input(Fore.CYAN + "Please Click Enter To Return To The Main Menu Of The Tool..." + Style.RESET_ALL) 
 
         elif setup_type == "11":
+            new_android_id = input(Fore.CYAN + "Please Enter The New Android ID You Want To Change To Same Hwid For Arceus X NEO And Codex: " + Style.RESET_ALL)
+            change_android_id(new_android_id)
+            input(Fore.CYAN + "Please Click Enter To Return To The Main Menu Of The Tool..." + Style.RESET_ALL) 
+
+        elif setup_type == "12":
             break
 
 if __name__ == "__main__":
