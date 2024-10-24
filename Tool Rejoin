@@ -1288,6 +1288,7 @@ def main():
                 package_name = packages[0] 
                 minutes = int(input(Fore.CYAN + "Please Enter Time To Automatically Bypass(Minute): " + Style.RESET_ALL))
                 run_process(package_name, minutes)
+            return main()
 
         elif setup_type == "11":
             break
