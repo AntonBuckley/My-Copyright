@@ -891,33 +891,29 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"Error editing HWID file: {e}" + Style.RESET_ALL)
 
 def run_process(package_name, minutes):
-    # Lấy HWID và đường dẫn file HWID
     hwid, hwid_file_path = get_hwid(package_name)
     
     if hwid is None or hwid_file_path is None:
-        print(Fore.RED + "Failed to retrieve HWID or HWID file path." + Style.RESET_ALL)
+        print(Fore.RED + "An Error Occurred While Getting Hwid To Bypass Fluxus, Please Check And Try Again Later" + Style.RESET_ALL)
         return
-    
-    # URL của API với HWID được chèn vào
-    url = f"https://madkung.vercel.app/fluxus-api?url=https://flux.li/android/external/start.php?HWID={hwid}&api_key=XqzyaenZishd33axPYPz"
-    print(Fore.YELLOW + f"Sending request to: {url}" + Style.RESET_ALL)
+    axionix = f"https://flux.li/android/external/start.php?HWID={hwid}"
+    url = f"https://madkung.vercel.app/fluxus-api?url={axionix}&api_key=XqzyaenZishd33axPYPz"
+    print(Fore.YELLOW + f"Sending request to: {axionix}" + Style.RESET_ALL)
     
     try:
-        # Gửi yêu cầu đến API
         response = requests.get(url)
         
         if response.status_code == 200:
-            print(Fore.GREEN + "API call successful!" + Style.RESET_ALL)
-            print("Response:", response.json())  # Hiển thị kết quả trả về
+            print(Fore.GREEN + "Bypass Fluxus Sent To API Successfully" + Style.RESET_ALL)
+            print("Response:", response.json())  
         else:
-            print(Fore.RED + f"API call failed with status code: {response.status_code}" + Style.RESET_ALL)
+            print(Fore.RED + f"An Error Occurred When Using The API To Bypass Fluxus, Please Report It To Axionix On Discord: https://discord.gg/axionix" + Style.RESET_ALL)
     
     except Exception as e:
-        print(Fore.RED + f"An error occurred during the API call: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"An Error Occurred When Using The API To Bypass Fluxus, Please Report It To Axionix On Discord: https://discord.gg/axionix" + Style.RESET_ALL)
         return
     
-    # Đợi khoảng thời gian đã nhập trước khi chạy lại quá trình
-    print(Fore.CYAN + f"Waiting for {minutes} minute(s) before rerunning the process..." + Style.RESET_ALL)
+    print(Fore.CYAN + f"Please Wait {minutes} Minute To Bypass Again..." + Style.RESET_ALL)
     time.sleep(minutes * 60)
     run_process(package_name, minutes)
 
@@ -1279,12 +1275,13 @@ def main():
         elif setup_type == "10":
             packages = get_roblox_packages()
             if not packages:
-                print(Fore.RED + "No Roblox packages found!" + Style.RESET_ALL)
+                print(Fore.RED + "Package Not Found On Your Device!" + Style.RESET_ALL)
             else:
-                print(Fore.CYAN + "Available Roblox packages: " + ", ".join(packages) + Style.RESET_ALL)
+                print(Fore.GREEN + "Package Found on Your Device: " + ", ".join(packages) + Style.RESET_ALL)
                 package_name = packages[0] 
-                minutes = int(input("Minute: "))
+                minutes = int(input(Fore.CYAN + "Please Enter Time To Automatically Bypass(Minute): " + Style.RESET_ALL))
                 run_process(package_name, minutes)
+            input(Fore.CYAN + "\nPlease Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
         elif setup_type == "11":
             break
