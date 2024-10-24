@@ -809,25 +809,30 @@ def save_cache():
 def check_user_online(user_id):
     max_retries = 3
     delay = 2
-
+    timeout_duration = 5
+ 
     for attempt in range(max_retries):
         try:
             primary_url = "https://presence.roblox.com/v1/presence/users"
             headers = {'Content-Type': 'application/json'}
             body = json.dumps({"userIds": [user_id]})
+            
             with requests.Session() as session:
-                primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
-            primary_response.raise_for_status()
-            primary_data = primary_response.json()
-            primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
-            primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
+                primary_response = session.post(primary_url, headers=headers, data=body, timeout=timeout_duration)
+            
+            if primary_response.status_code == 200: 
+                primary_data = primary_response.json()
+                primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
+                primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
 
-            if primary_last_location == "Website":
-                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
-                primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
+                if primary_last_location == "Website":
+                    print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
+                    primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
 
-            return primary_presence_type, primary_last_location
-
+                return primary_presence_type, primary_last_location
+            else:
+                print(Fore.RED + f"Error: Received status code {primary_response.status_code} from server." + Style.RESET_ALL)
+        
         except requests.exceptions.RequestException as e:
             print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
             if attempt < max_retries - 1:
