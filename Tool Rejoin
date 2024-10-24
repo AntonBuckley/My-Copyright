@@ -957,8 +957,7 @@ def main():
             "Automatically Set Up User ID For Roblox Games",
             "Roblox Account Login Using Cookies",       
             "Automatically Same Hwid For Fluxus",
-            "Automatically Bypass Fluxus Executor Keys",      
-            "Automatically Same Hwid For Arceus X NEO And Codex",     
+            "Automatically Bypass Fluxus Executor Keys",          
             "Exit"
         ]
 
@@ -1301,11 +1300,6 @@ def main():
             input(Fore.CYAN + "Please Click Enter To Return To The Main Menu Of The Tool..." + Style.RESET_ALL) 
 
         elif setup_type == "11":
-            new_android_id = input(Fore.CYAN + "Please Enter The New Android ID You Want To Change To Same Hwid For Arceus X NEO And Codex: " + Style.RESET_ALL)
-            change_android_id_sqlite(new_android_id)
-            input(Fore.CYAN + "Please Click Enter To Return To The Main Menu Of The Tool..." + Style.RESET_ALL) 
-
-        elif setup_type == "12":
             break
 
 if __name__ == "__main__":
