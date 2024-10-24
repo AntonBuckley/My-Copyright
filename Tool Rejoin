@@ -905,7 +905,6 @@ def run_process(package_name, minutes):
         
         if response.status_code == 200:
             print(Fore.GREEN + "Bypass Fluxus Sent To API Successfully" + Style.RESET_ALL)
-            print("Response:", response.json())  
         else:
             print(Fore.RED + f"An Error Occurred When Using The API To Bypass Fluxus, Please Report It To Axionix On Discord: https://discord.gg/axionix" + Style.RESET_ALL)
     
@@ -913,9 +912,9 @@ def run_process(package_name, minutes):
         print(Fore.RED + f"An Error Occurred When Using The API To Bypass Fluxus, Please Report It To Axionix On Discord: https://discord.gg/axionix" + Style.RESET_ALL)
         return
     
-    print(Fore.CYAN + f"Please Wait {minutes} Minute To Bypass Again..." + Style.RESET_ALL)
     time.sleep(minutes * 60) 
-    return
+    print(Fore.CYAN + f"Please Wait {minutes} Minute To Bypass Again..." + Style.RESET_ALL)
+        return None
 
 detect_and_write_lua_script()
         
@@ -1271,6 +1270,7 @@ def main():
                     edit_hwid_file(hwid_file_path)
                 else:
                     print(Fore.RED + f"Hwid Not Found On Your Device!" + Style.RESET_ALL)
+            input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
         elif setup_type == "10":
             packages = get_roblox_packages()
