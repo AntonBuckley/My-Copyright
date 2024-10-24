@@ -921,9 +921,7 @@ def run_process(package_name, minutes):
         return
     
     print(Fore.CYAN + f"Please Wait {minutes} Minute To Bypass Again..." + Style.RESET_ALL)
-    time.sleep(minutes * 60)
-    
-    input(Fore.CYAN + "\nPlease Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
+    time.sleep(minutes * 60) 
     return main()
 
 detect_and_write_lua_script()
