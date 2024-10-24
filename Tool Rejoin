@@ -885,18 +885,13 @@ def run_process(package_name, minutes):
         
         if response.status_code == 200:
             print(Fore.GREEN + "Bypass Fluxus Sent To API Successfully" + Style.RESET_ALL)
+            print("Response:", response.json())
         else:
             print(Fore.RED + f"An Error Occurred When Using The API To Bypass Fluxus, Please Report It To Axionix On Discord: https://discord.gg/axionix" + Style.RESET_ALL)
     
     except Exception as e:
         print(Fore.RED + f"An Error Occurred When Using The API To Bypass Fluxus, Please Report It To Axionix On Discord: https://discord.gg/axionix" + Style.RESET_ALL)
         return
-    
-    time.sleep(minutes * 60) 
-    print(Fore.CYAN + f"Please Wait {minutes} Minute To Bypass Again..." + Style.RESET_ALL)
-
-    main()
-    return
 
 def edit_hwid_file(hwid_file_path):
     try:
@@ -918,8 +913,8 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
 
-detect_and_write_lua_script()
-        
+detect_and_write_lua_script() 
+
 def main():
     clear_screen() 
     load_cache()  
@@ -946,7 +941,7 @@ def main():
         create_dynamic_menu(menu_options)  # Create the dynamic menu
 
         setup_type = input(Fore.LIGHTMAGENTA_EX + "Please Enter Your Choice: " + Style.RESET_ALL)
-        
+
         if setup_type == "1":
             server_links = load_server_links()
             accounts = load_accounts()
@@ -1127,15 +1122,13 @@ def main():
                     print(Fore.RED + f"Critical error in auto rejoin loop: {e}" + Style.RESET_ALL)
                     time.sleep(60)
                     continue
-            
+
         elif setup_type == "2":
             accounts = []
             packages = get_roblox_packages()
-
             for package_name in packages:
                 user_input = input(f"Enter the user ID or username for {package_name}: ")
                 user_id = None
-
                 if user_input.isdigit():
                     user_id = user_input
                 else:
@@ -1144,16 +1137,14 @@ def main():
                     if user_id is None:
                         print(Fore.RED + "Failed to retrieve user ID. Please enter the user ID manually." + Style.RESET_ALL)
                         user_id = input("Enter the user ID: ")
-
                 accounts.append((package_name, user_id))
                 print(f"Set {package_name} to user ID: {user_id}")
 
             save_accounts(accounts)
             save_cache()
             print(Fore.GREEN + "User IDs saved!" + Style.RESET_ALL)
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
-            
         elif setup_type == "3":
             server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
             formatted_link = format_server_link(server_link)
@@ -1164,7 +1155,7 @@ def main():
                 save_server_links(server_links)
                 print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
                 
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)                 
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
         elif setup_type == "4":
             packages = get_roblox_packages()
@@ -1178,9 +1169,8 @@ def main():
                     server_links.append((package_name, formatted_link))
 
             save_server_links(server_links)  
-            
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
-            
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
+
         elif setup_type == "5":
             clear_choice = input(Fore.GREEN + "What do you want to clear?\n1. Clear User IDs\n2. Clear Server Links\n3. Clear Both\nEnter choice: " + Style.RESET_ALL)
 
@@ -1210,9 +1200,9 @@ def main():
                     print(Fore.GREEN + "Server links cleared successfully!" + Style.RESET_ALL)
                 else:
                     print(Fore.YELLOW + f"No such file: '{SERVER_LINKS_FILE}' found to clear." + Style.RESET_ALL)
-                    
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
-            
+
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
+
         elif setup_type == "6":
             accounts = load_accounts()
             server_links = load_server_links()
@@ -1223,7 +1213,8 @@ def main():
                 create_dynamic_table(headers, rows)
             else:
                 print(Fore.RED + "No accounts or server links to display." + Style.RESET_ALL)
-            input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL) 
+            input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL)
+
         elif setup_type == "7":
             print(Fore.GREEN + "Auto Setup User IDs from each package's appStorage.json..." + Style.RESET_ALL)
             packages = get_roblox_packages()
@@ -1235,9 +1226,9 @@ def main():
                 
                 if user_id:
                     accounts.append((package_name, user_id))
-                    print(f"Found UserId for {package_name}: {user_id}")
+                    print(Fore.GREEN + f"Package Found Is: {package_name} And User ID Is: {user_id}")
                 else:
-                    print(Fore.RED + f"UserId not found for {package_name}. Make sure the file path is correct and the format is as expected." + Style.RESET_ALL)
+                    print(Fore.RED + f"User ID Not Found For Package Is: {package_name}" + Style.RESET_ALL)
 
             save_accounts(accounts)
             save_cache()
@@ -1251,13 +1242,13 @@ def main():
                 server_links = [(package_name, formatted_link) for package_name in packages]
                 save_server_links(server_links)
                 print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
         elif setup_type == "8":  # Auto Login via Cookie
             inject_cookies_and_appstorage()
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-        elif setup_type == '9':
+        elif setup_type == "9":
             packages = get_roblox_packages()
 
             if not packages:
@@ -1281,15 +1272,14 @@ def main():
             else:
                 print(Fore.GREEN + "Package Found on Your Device: " + ", ".join(packages) + Style.RESET_ALL)
                 package_name = packages[0] 
-                minutes = int(input(Fore.CYAN + "Please Enter Time To Automatically Bypass(Minute): " + Style.RESET_ALL))
+                minutes = int(input(Fore.CYAN + "Please Enter Bypass Time Command Again: " + Style.RESET_ALL)) * 60
                 run_process(package_name, minutes)
-
-            input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
+            input(Fore.CYAN + "Click Here To Go To Main Menu.." + Style.RESET_ALL) 
 
         elif setup_type == "11":
             break
 
 if __name__ == "__main__":
     load_cache()  
-    main()  # Run the main function
-    save_cache()  
+    main() 
+    save_cache()
