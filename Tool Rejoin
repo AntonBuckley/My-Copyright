@@ -862,11 +862,11 @@ def get_hwid(package_name):
     try:
         with open(hwid_file_path, "r") as file:
             hwid = file.read().strip()
-            print(Fore.GREEN + f"HWID found: {hwid}" + Style.RESET_ALL)
-            return hwid, hwid_file_path  # Trả về cả HWID và đường dẫn file
+            print(Fore.GREEN + f"Hwid Found In Your Device, That Is: {hwid}" + Style.RESET_ALL)
+            return hwid, hwid_file_path  
             
     except Exception as e:
-        print(Fore.RED + f"Error retrieving HWID: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"An Error Occurred While Retrieving Your Hwid!" + Style.RESET_ALL)
         return None, None
 
 def edit_hwid_file(hwid_file_path):
@@ -874,21 +874,19 @@ def edit_hwid_file(hwid_file_path):
         with open(hwid_file_path, 'r') as file:
             content = file.read().strip()
         
-        print(Fore.YELLOW + f"Current HWID content: {content}" + Style.RESET_ALL)
+        print(Fore.YELLOW + f"Current HWID Content: {content}" + Style.RESET_ALL)
         
-        # Yêu cầu người dùng nhập nội dung mới để thay thế HWID
-        new_content = input("Enter new HWID content (or press Enter to keep the current content): ")
+        new_content = input(Fore.CYAN + "Please Enter The Hwid You Want To Adjust To Same Hwid In Fluxus Executr On Your Device(Press Enter To Keep The Old Hwid): " + Style.RESET_ALL)
         
-        if new_content.strip():  # Nếu có nội dung mới
-            # Ghi nội dung mới vào file
+        if new_content.strip(): 
             with open(hwid_file_path, 'w') as file:
                 file.write(new_content.strip())
-            print(Fore.GREEN + f"HWID file updated successfully with new content: {new_content}" + Style.RESET_ALL)
+            print(Fore.GREEN + f"Hwid Has Been Successfully Edited As You Want And Now It Is Same Hwid: {new_content}" + Style.RESET_ALL)
         else:
-            print(Fore.YELLOW + "No changes made to the HWID file." + Style.RESET_ALL)
+            print(Fore.RED + "Hwid Unedited In Fluxus Executor" + Style.RESET_ALL)
             
     except Exception as e:
-        print(Fore.RED + f"Error editing HWID file: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
 
 def run_process(package_name, minutes):
     hwid, hwid_file_path = get_hwid(package_name)
@@ -896,9 +894,10 @@ def run_process(package_name, minutes):
     if hwid is None or hwid_file_path is None:
         print(Fore.RED + "An Error Occurred While Getting Hwid To Bypass Fluxus, Please Check And Try Again Later" + Style.RESET_ALL)
         return
+
     axionix = f"https://flux.li/android/external/start.php?HWID={hwid}"
     url = f"https://madkung.vercel.app/fluxus-api?url={axionix}&api_key=XqzyaenZishd33axPYPz"
-    print(Fore.YELLOW + f"Sending request to: {axionix}" + Style.RESET_ALL)
+    print(Fore.YELLOW + f"The Fluxus Link You Want To Bypass Is: {axionix}" + Style.RESET_ALL)
     
     try:
         response = requests.get(url)
@@ -915,7 +914,9 @@ def run_process(package_name, minutes):
     
     print(Fore.CYAN + f"Please Wait {minutes} Minute To Bypass Again..." + Style.RESET_ALL)
     time.sleep(minutes * 60)
-    run_process(package_name, minutes)
+    
+    input(Fore.CYAN + "\nPlease Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
+    main() 
 
 detect_and_write_lua_script()
         
@@ -1281,7 +1282,6 @@ def main():
                 package_name = packages[0] 
                 minutes = int(input(Fore.CYAN + "Please Enter Time To Automatically Bypass(Minute): " + Style.RESET_ALL))
                 run_process(package_name, minutes)
-            input(Fore.CYAN + "\nPlease Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
         elif setup_type == "11":
             break
