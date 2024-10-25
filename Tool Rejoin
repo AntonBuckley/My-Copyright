@@ -858,7 +858,7 @@ def get_hwid(package_name):
     hwid_file_path = get_hwid_file_path(package_name)
     
     if hwid_file_path is None:
-        return None
+        return None, None  # Trả về cả hai giá trị là None nếu không tìm thấy file
 
     try:
         with open(hwid_file_path, "r") as file:
@@ -868,15 +868,15 @@ def get_hwid(package_name):
             
     except Exception as e:
         print(Fore.RED + f"An Error Occurred While Retrieving Your Hwid!" + Style.RESET_ALL)
-        return None, None
+        return None, None  
 
 def run_process(package_name, minutes):
-    hwid, hwid_file_path = get_hwid(package_name)
+    hwid, hwid_file_path = get_hwid(package_name) 
     
-    if hwid is None or hwid_file_path is None:
+    if hwid is None or hwid_file_path is None:  
         print(Fore.RED + "An Error Occurred While Getting Hwid To Bypass Fluxus, Please Check And Try Again Later" + Style.RESET_ALL)
-        return
-
+        return  
+    
     axionix = f"https://flux.li/android/external/start.php?HWID={hwid}"
     url = f"https://madkung.vercel.app/fluxus-api?url={axionix}&api_key=XqzyaenZishd33axPYPz"
     print(Fore.YELLOW + f"The Fluxus Link You Want To Bypass Is: {axionix}" + Style.RESET_ALL)
@@ -892,7 +892,6 @@ def run_process(package_name, minutes):
     
     except Exception as e:
         print(Fore.RED + f"An Error Occurred When Using The API To Bypass Fluxus, Please Report It To Axionix On Discord: https://discord.gg/axionix" + Style.RESET_ALL)
-        return
 
 def edit_hwid_file(hwid_file_path):
     try:
@@ -913,29 +912,6 @@ def edit_hwid_file(hwid_file_path):
     except Exception as e:
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
-
-def change_android_id_sqlite(new_android_id):
-    try:
-        # Đường dẫn tới file settings.db (yêu cầu thiết bị root)
-        settings_db_path = "/data/data/com.android.providers.settings/databases/settings.db"
-
-        # Kiểm tra quyền truy cập vào file settings.db
-        if not os.path.exists(settings_db_path):
-            print("Không thể tìm thấy file settings.db hoặc không có quyền truy cập!")
-            return
-        
-        # Kết nối tới SQLite database
-        conn = sqlite3.connect(settings_db_path)
-        cursor = conn.cursor()
-
-        # Thực hiện lệnh SQL để thay đổi Android ID
-        cursor.execute("UPDATE secure SET value = ? WHERE name = 'android_id'", (new_android_id,))
-        conn.commit()
-        conn.close()
-
-        print(f"Android ID đã được thay đổi thành: {new_android_id}")
-    except Exception as e:
-        print(f"Lỗi khi thay đổi Android ID: {e}")
 
 detect_and_write_lua_script() 
 
