@@ -587,7 +587,7 @@ def send_webhook():
                 {"name": "Memory Available", "value": f"{system_info['memory_available'] / system_info['memory_total'] * 100:.2f}%", "inline": True},
                 {"name": "Total Memory", "value": f"{system_info['memory_total'] / (1024 ** 3):.2f} GB", "inline": True},
                 {"name": "Uptime", "value": f"{system_info['uptime'] / 3600:.2f} giờ", "inline": True},
-                {"name": "Number Of Roblox Games On Device: {device_name}", "value": f"{roblox_process_count}", "inline": True}
+                {"name": "Number Of Roblox Games On Device", "value": f"{roblox_process_count}", "inline": True}
             ],
             "image": {
                 "url": "attachment://screenshot.png"
