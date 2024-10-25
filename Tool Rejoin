@@ -496,7 +496,7 @@ def get_roblox_packages():
     return packages
 
 def capture_screenshot():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir = "/data/data/com.termux/files/home"
     screenshots_dir = os.path.join(current_dir, "screenshots")
     os.makedirs(screenshots_dir, exist_ok=True)
     screenshot_path = os.path.join(screenshots_dir, "screenshot.png")
