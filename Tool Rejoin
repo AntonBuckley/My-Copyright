@@ -21,7 +21,12 @@ init()
 
 SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
 ACCOUNTS_FILE = "AXAccount.txt"
+CONFIG_FILE = "Webhook_Config.txt"
+webhook_url = None
+device_name = None
 interval = None
+stop_webhook_thread = False
+webhook_thread = None
 status_lock = Lock()
 rejoin_lock = Lock()
 package_statuses = {}
@@ -266,6 +271,15 @@ def create_dynamic_table(headers, rows):
         print(row)
     print(bottom_border) 
 
+def handle_exit_signal(signum, frame):
+    print(Fore.YELLOW + "Webhooks Quietly Deactivated..." + Style.RESET_ALL)
+    save_cache()  
+    stop_event.set() 
+    stop_webhook()  
+    if webhook_thread and webhook_thread.is_alive():
+        webhook_thread.join()  
+    exit(0)
+
 def update_status_table(package_statuses):
     clear_screen()
     print_rainbow_header()
@@ -480,6 +494,150 @@ def get_roblox_packages():
             packages.append(package_name)
 
     return packages
+
+def capture_screenshot():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    screenshots_dir = os.path.join(current_dir, "screenshots")
+    os.makedirs(screenshots_dir, exist_ok=True)
+    screenshot_path = os.path.join(screenshots_dir, "screenshot.png")
+    
+    if shutil.which("screencap") is None:
+        print(Fore.RED + "An Error Occurred While Running The Code To Take A Screenshot!" + Style.RESET_ALL)
+        return None
+
+    result = subprocess.run(["screencap", "-p", screenshot_path], capture_output=True)
+    
+    if result.returncode != 0 or not os.path.exists(screenshot_path):
+        print(Fore.RED + f"An Error Occurred While Taking Photos!" + Style.RESET_ALL)
+        return None
+
+    return screenshot_path
+
+def get_system_info():
+    cpu_usage = psutil.cpu_percent(interval=1)
+    memory_info = psutil.virtual_memory()
+    uptime = time.time() - psutil.boot_time()
+
+    system_info = {
+        "cpu_usage": cpu_usage,
+        "memory_total": memory_info.total,
+        "memory_available": memory_info.available,
+        "memory_used": memory_info.used,
+        "uptime": uptime
+    }
+    
+    return system_info
+
+def load_config():
+    global webhook_url, device_name, interval
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as file:
+            config = json.load(file)
+            webhook_url = config.get("webhook_url")
+            device_name = config.get("device_name")
+            interval = config.get("interval")
+    else:
+        webhook_url = None
+        device_name = None
+        interval = None
+
+def save_config():
+    config = {
+        "webhook_url": webhook_url,
+        "device_name": device_name,
+        "interval": interval
+    }
+    with open(CONFIG_FILE, "w") as file:
+        json.dump(config, file)
+
+def start_webhook_thread():
+    global webhook_thread, stop_webhook_thread
+    if webhook_thread is None or not webhook_thread.is_alive():
+        stop_webhook_thread = False
+        webhook_thread = threading.Thread(target=send_webhook)
+        webhook_thread.start()
+
+def count_roblox_processes():
+    count = 0
+    for proc in psutil.process_iter(['name']):
+        if 'roblox' in proc.info['name'].lower():
+            count += 1
+    return count
+
+def send_webhook():
+    global stop_webhook_thread
+
+    while not stop_webhook_thread:
+        screenshot_path = capture_screenshot()
+
+        if screenshot_path is None or not os.path.exists(screenshot_path):
+            print(Fore.RED + "An Error Occurred While Taking Photos!" + Style.RESET_ALL)
+            continue
+
+        system_info = get_system_info()
+        roblox_process_count = count_roblox_processes()
+
+        embed = {
+            "title": f"System Information Of {device_name}",
+            "color": 15258703,
+            "fields": [
+                {"name": "Device Name", "value": device_name, "inline": True},
+                {"name": "CPU Usage", "value": f"{system_info['cpu_usage']}%", "inline": True},
+                {"name": "Memory Used", "value": f"{system_info['memory_used'] / system_info['memory_total'] * 100:.2f}%", "inline": True},
+                {"name": "Memory Available", "value": f"{system_info['memory_available'] / system_info['memory_total'] * 100:.2f}%", "inline": True},
+                {"name": "Total Memory", "value": f"{system_info['memory_total'] / (1024 ** 3):.2f} GB", "inline": True},
+                {"name": "Uptime", "value": f"{system_info['uptime'] / 3600:.2f} giờ", "inline": True},
+                {"name": "Number Of Roblox Games On Device: {device_name}", "value": f"{roblox_process_count}", "inline": True}
+            ],
+            "image": {
+                "url": "attachment://screenshot.png"
+            }
+        }
+
+        payload = {
+            "embeds": [embed],
+            "username": device_name
+        }
+
+        try:
+            with open(screenshot_path, "rb") as file:
+                response = requests.post(
+                    webhook_url,
+                    data={"payload_json": json.dumps(payload)},
+                    files={"file": ("screenshot.png", file)}
+                )
+
+            if response.status_code in [200, 204]:
+                pass  
+            else:
+                pass  
+        except Exception as e:
+            pass  
+
+        try:
+            os.remove(screenshot_path)
+        except Exception as e:
+            pass  
+
+        time.sleep(interval * 60)
+
+def stop_webhook():
+    global stop_webhook_thread
+    stop_webhook_thread = True
+
+def setup_webhook():
+    global webhook_url, device_name, interval, stop_webhook_thread
+
+    stop_webhook_thread = True 
+
+    webhook_url = input(Fore.CYAN + "Please Enter Your Webhook URL: " + Style.RESET_ALL)
+    device_name = input(Fore.CYAN + "Please Enter Device Name: " + Style.RESET_ALL) 
+    interval = int(input(Fore.CYAN + "Please Enter Sending Time Range(Minutes): " + Style.RESET_ALL))
+
+    save_config()  
+
+    stop_webhook_thread = False
+    threading.Thread(target=send_webhook).start()
 
 def is_roblox_running(package_name):
     package_name = package_name.lower() 
@@ -934,7 +1092,8 @@ def main():
             "Automatically Set Up User ID For Roblox Games",
             "Roblox Account Login Using Cookies",       
             "Automatically Same Hwid For Fluxus",
-            "Automatically Bypass Fluxus Executor Keys",          
+            "Automatically Bypass Fluxus Executor Keys",     
+            "Automatically Send Webhook",      
             "Exit"
         ]
 
@@ -961,6 +1120,10 @@ def main():
                 print(Fore.RED + f"Invalid input: {ve}. Please enter a valid interval in minutes." + Style.RESET_ALL)
                 input(Fore.GREEN + "Press Enter to return to the menu..." + Style.RESET_ALL)
                 continue
+
+            if webhook_url and device_name and interval:
+                if webhook_thread is None or not webhook_thread.is_alive():
+                    start_webhook_thread()
 
             package_statuses = {}
             for package_name, server_link in server_links:
@@ -1277,7 +1440,12 @@ def main():
             input(Fore.CYAN + "Please Click Enter To Return To The Main Menu Of The Tool..." + Style.RESET_ALL) 
 
         elif setup_type == "11":
-            break
+            setup_webhook()
+
+        elif setup_type == "12":
+            global stop_webhook_thread
+            stop_webhook_thread = True  
+            break 
 
 if __name__ == "__main__":
     load_cache()  
