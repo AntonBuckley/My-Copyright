@@ -861,7 +861,6 @@ def find_userid_from_file(file_path):
         print(f"Error reading file: {e}")
         return None
 
-# Asynchronous function to get user ID from username
 async def get_user_id(username):
     url = "https://users.roblox.com/v1/usernames/users"
     payload = {
@@ -885,7 +884,6 @@ def get_server_link(package_name, server_links):
 def get_username_from_id(user_id):
     return get_username(user_id) or user_id
     
-# Function to get username from user ID
 def get_username(user_id):
     retry_attempts = 2
     for attempt in range(retry_attempts):
@@ -903,7 +901,6 @@ def get_username(user_id):
             print(Fore.RED + f"Attempt {attempt + 1} failed for Roblox Users API: {e}" + Style.RESET_ALL)
             time.sleep(2 ** attempt)  # Exponential backoff
 
-    # Fallback to RoProxy API
     for attempt in range(retry_attempts):
         try:
             url = f"https://users.roproxy.com/v1/users/{user_id}"
@@ -921,7 +918,6 @@ def get_username(user_id):
 
     return "Unknown"
 
-# Example of saving the username in a persistent storage
 def save_username(user_id, username):
     try:
         if not os.path.exists("usernames.json"):
@@ -970,30 +966,30 @@ def check_user_online(user_id):
     primary_url = "https://presence.roblox.com/v1/presence/users"
     headers = {'Content-Type': 'application/json'}
     payload = {"userIds": [user_id]}
-    
-    for attempt in range(max_retries):
-        try:
-            with requests.Session() as session:
+
+    with requests.Session() as session:
+        for attempt in range(max_retries):
+            try:
                 response = session.post(primary_url, headers=headers, json=payload, timeout=7)
-            response.raise_for_status()
-            data = response.json()
-            presence = data["userPresences"][0]
-            presence_type = presence["userPresenceType"]
-            last_location = presence.get("lastLocation", None)
+                response.raise_for_status()
+                data = response.json()
+                presence = data["userPresences"][0]
+                presence_type = presence["userPresenceType"]
+                last_location = presence.get("lastLocation", None)
 
-            if last_location == "Website":
-                print(Fore.YELLOW + f"{user_id} Is Still On The Interface But Not In The Game, Start Rejoining Again..." + Style.RESET_ALL)
-                return 0, last_location  
+                if last_location == "Website":
+                    print(Fore.YELLOW + f"{user_id} Is Still On The Interface But Not In The Game, Start Rejoining Again..." + Style.RESET_ALL)
+                    return 0, last_location  
 
-            return presence_type, last_location
+                return presence_type, last_location
 
-        except requests.exceptions.RequestException as e:
-            print(Fore.RED + f"An Error Occurred While Checking Online" + Style.RESET_ALL)
-            if attempt < max_retries - 1:
-                time.sleep(delay)
-                delay *= 2  
-            else:
-                return None, None
+            except requests.exceptions.RequestException:
+                if attempt < max_retries - 1:
+                    time.sleep(delay)
+                    delay *= 2  
+                else:
+                    print(Fore.RED + "An Error Occurred While Checking Online" + Style.RESET_ALL)
+                    return None, None
 
 def get_hwid_file_path(package_name):
     directory = f"/data/data/{package_name}/app_assets/content/"
