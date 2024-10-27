@@ -48,7 +48,6 @@ workspace_paths = []
 for executor, base_path in executors.items():
     workspace_paths.append(f"{base_path}Workspace")   
     workspace_paths.append(f"{base_path}workspace")  
-
     
 lua_script_template = '''
 local GuiService = game:GetService("GuiService")
@@ -65,7 +64,8 @@ end)
 
 repeat wait() until game.JobId ~= nil
 
-local function writeExecutorStatus(status)
+local function UIExecutorStatus(status)
+    print("https://discord.gg/fqNxktESCH")
     local username = Players.LocalPlayer.Name  
     local currentTime = os.time() 
     local success, err = pcall(function() 
@@ -77,11 +77,11 @@ local function writeExecutorStatus(status)
     end
 end
 
-writeExecutorStatus("working")
+UIExecutorStatus("working")
 
 while not getgenv().StopUpdate do
-    wait(3)  
-    writeExecutorStatus("working") 
+    wait(1)  
+    UIExecutorStatus("working") 
 end
 '''
 
