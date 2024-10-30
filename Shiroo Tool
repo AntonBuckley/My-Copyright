@@ -17,17 +17,24 @@ import signal
 from colorama import init, Fore, Style
 from threading import Lock
 
+# Initialize colorama
 init()
 
-SERVER_LINKS_FILE = "AXPrivate_Server_Link.txt"
-ACCOUNTS_FILE = "AXAccount.txt"
+SERVER_LINKS_FILE = "server_links.txt"
+ACCOUNTS_FILE = "accounts.txt"
+CONFIG_FILE = "config.json"
+webhook_url = None
+device_name = None
 interval = None
+stop_webhook_thread = False
+webhook_thread = None
 status_lock = Lock()
 rejoin_lock = Lock()
+
 package_statuses = {}
 username_cache = {}
 CACHE_FILE = "username_cache.json"
-cache_save_interval = 600  
+cache_save_interval = 600  # Save the cache every 10 minutes
 stop_event = threading.Event()
     
 executors = {
@@ -40,9 +47,10 @@ executors = {
 
 workspace_paths = []
 
+# Add both uppercase and lowercase 'Workspace' paths for each executor's base path
 for executor, base_path in executors.items():
-    workspace_paths.append(f"{base_path}Workspace")   
-    workspace_paths.append(f"{base_path}workspace")  
+    workspace_paths.append(f"{base_path}Workspace")   # Uppercase 'W'
+    workspace_paths.append(f"{base_path}workspace")   # Lowercase 'w'
 
     
 lua_script_template = '''
@@ -53,61 +61,55 @@ local os_time = os.time()
 getgenv().StopUpdate = false
 
 GuiService.ErrorMessageChanged:Connect(function()
-    if GuiService:GetErrorCode().Value >= Enum.ConnectionError.DisconnectErrors.Value then
+    local Code = GuiService:GetErrorCode().Value
+    if Code >= Enum.ConnectionError.DisconnectErrors.Value then
         getgenv().StopUpdate = true
     end
 end)
 
 repeat wait() until game.JobId ~= nil
 
+-- exec status
 local function writeExecutorStatus(status)
-    local username = Players.LocalPlayer.Name  
-    local currentTime = os.time() 
-    local success, err = pcall(function() 
-        writefile("executor_check_" .. username .. ".txt", status .. ":" .. currentTime) 
+    local username = Players.LocalPlayer.Name  -- Get the player's username
+    pcall(function() 
+        writefile("executor_check_" .. username .. ".txt", status .. ":" .. os_time)  -- username and timestamp
     end)
-
-    if not success then
-        warn("An Error Occurred While Rewriting File Status")  
-    end
 end
 
+-- initial
 writeExecutorStatus("working")
 
-while not getgenv().StopUpdate do
-    wait(3)  
-    writeExecutorStatus("working") 
+-- Monitor if player teleports or periodically update the status
+while wait(1) do
+    if not getgenv().StopUpdate and Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerScripts") then 
+        -- Continuously update the working status
+        writeExecutorStatus("working")
+    end
 end
 '''
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def print_rainbow_header():
+def print_header():
     header = r"""
-____  ___                           ___ ___         ___.    
-\   \/  /  ____  _______   ____    /   |   \  __ __ \_ |__  
- \     / _/ __ \ \_  __ \ /  _ \  /    ~    \|  |  \ | __ \ 
- /     \ \  ___/  |  | \/(  <_> ) \    Y    /|  |  / | \_\ \
-/___/\  \ \___  > |__|    \____/   \___|_  / |____/  |___  /
-      \_/     \/                         \/              \/ 
+  _____ _             _   _               ____       _       _       
+ |  ___| | ___   __ _| |_(_)_ __   __ _  |  _ \ ___ (_) ___ (_)_ __  
+ | |_  | |/ _ \ / _` | __| | '_ \ / _` | | |_) / _ \| |/ _ \| | '_ \ 
+ |  _| | | (_) | (_| | |_| | | | | (_| | |  _ <  __/| | (_) | | | | |
+ |_|   |_|\___/ \__,_|\__|_|_| |_|\__, | |_| \_\___|/ |\___/|_|_| |_|
+                                  |___/           |__/               
 """
-    color = Fore.RED
+    print(Fore.LIGHTCYAN_EX + header + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Made by not.shiroo" + Style.RESET_ALL)
 
-    for line in header.splitlines():
-        for char in line:
-            print(color + char, end='')
-        print(Style.RESET_ALL)  
-
-    print(Fore.LIGHTMAGENTA_EX + "Created By not.shiroo | Improved By Axionix" + Style.RESET_ALL)
-    print(Fore.LIGHTMAGENTA_EX + "Version: 1" + Style.RESET_ALL)
-
-print_rainbow_header()
-
+# Function to detect available executors and write the Lua script to their Autoexec folder
 def detect_and_write_lua_script():
     detected_executors = []
 
     for executor_name, base_path in executors.items():
+        # Define all possible paths for Autoexec/Autoexecute
         possible_autoexec_paths = [
             os.path.join(base_path, "Autoexec"),
             os.path.join(base_path, "Autoexecute")
@@ -115,6 +117,7 @@ def detect_and_write_lua_script():
 
         lua_written = False  # To track if Lua file is successfully written
 
+        # Loop through Autoexec and Autoexecute paths
         for path in possible_autoexec_paths:
             if os.path.exists(path):
                 # Lua script path
@@ -191,8 +194,8 @@ def clear_executor_status(username):
                 
 def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=5, max_inactivity_time=30):
     status_file = f"executor_check_{username}.txt"
-    retry_timeout = time.time() + max_wait_time  
-    active_workspace = None  
+    retry_timeout = time.time() + max_wait_time  # Maximum time to wait before rejoining
+    active_workspace = None  # Track the valid workspace path once detected
 
     # Dynamically search for a valid workspace (lowercase or uppercase)
     for executor, base_path in executors.items():
@@ -245,23 +248,29 @@ def create_dynamic_menu(options):
     menu_content = [f"{Fore.LIGHTCYAN_EX}║ {Fore.LIGHTMAGENTA_EX}{i+1}{Fore.LIGHTCYAN_EX}. {option.ljust(max_option_length)} ║" 
                     for i, option in enumerate(options)]
     
+    # Print the menu
     print(top_border)
     for line in menu_content:
         print(line)
     print(bottom_border)
 
 def create_dynamic_table(headers, rows):
+    # Calculate the width of each column dynamically
     col_widths = [max(len(str(item)) for item in col) for col in zip(headers, *rows)]
-
+    
+    # Create the top, middle, and bottom borders
     top_border = f"{Fore.LIGHTCYAN_EX}╔" + "╦".join("═" * (width + 2) for width in col_widths) + "╗"
     middle_border = "╠" + "╬".join("═" * (width + 2) for width in col_widths) + "╣"
     bottom_border = f"╚" + "╩".join("═" * (width + 2) for width in col_widths) + "╝" + Style.RESET_ALL
 
+    # Create the header row
     header_row = "║ " + " ║ ".join(header.ljust(col_widths[i]) for i, header in enumerate(headers)) + " ║"
 
+    # Create the data rows
     data_rows = ["║ " + " ║ ".join(str(row[i]).ljust(col_widths[i]) for i in range(len(headers))) + " ║"
                  for row in rows]
 
+    # Print the table
     print(top_border)
     print(header_row)
     print(middle_border)
@@ -269,25 +278,38 @@ def create_dynamic_table(headers, rows):
         print(row)
     print(bottom_border) 
 
+def handle_exit_signal(signum, frame):
+    print(Fore.YELLOW + "Shutting down gracefully..." + Style.RESET_ALL)
+    save_cache()  # Save the cache
+    stop_event.set()  # Signal threads to stop
+    stop_webhook()  # Stop the webhook thread
+    if webhook_thread and webhook_thread.is_alive():
+        webhook_thread.join()  # Ensure webhook thread is terminated
+    exit(0)
+
 def update_status_table(package_statuses):
     clear_screen()
-    print_rainbow_header()
+    print_header()
 
     headers = ["Package", "Username", "Status"]
-    status_width = 30  
+    status_width = 30  # Fixed width for the Status column
     
+    # Calculate the width of the Package and Username columns dynamically
     col_widths = [
         max(len(headers[0]), max(len(str(package)) for package in package_statuses.keys())) + 2,
         max(len(headers[1]), max(len(str(info.get("Username", "Unknown"))) for info in package_statuses.values())) + 2,
         status_width  # Fixed width for Status
     ]
     
+    # Create the top, middle, and bottom borders
     top_border = f"{Fore.LIGHTCYAN_EX}╔" + "╦".join("═" * width for width in col_widths) + "╗"
     middle_border = "╠" + "╬".join("═" * width for width in col_widths) + "╣"
     bottom_border = f"╚" + "╩".join("═" * width for width in col_widths) + "╝" + Style.RESET_ALL
 
+    # Create the header row
     header_row = "║ " + " ║ ".join(header.ljust(col_widths[i] - 1) for i, header in enumerate(headers)) + " ║"
     
+    # Create the data rows with the fixed width for the Status column
     data_rows = []
     for package, info in package_statuses.items():
         row = [
@@ -297,13 +319,14 @@ def update_status_table(package_statuses):
         ]
         data_rows.append("║ " + " ║ ".join(row) + " ║")
     
+    # Print the table
     print(top_border)
     print(header_row)
     print(middle_border)
     for row in data_rows:
         print(row)
     print(bottom_border)
-     
+        
 def verify_cookie(cookie_value):
     try:
         # Set the headers with the cookie
@@ -325,19 +348,19 @@ def verify_cookie(cookie_value):
 
         if response.status_code == 200:
             # The user is authenticated
-            print(Fore.GREEN + "Your Cookies Are Correct, Your User Is Authenticated." + Style.RESET_ALL)
+            print(Fore.GREEN + "Cookie is valid! User is authenticated." + Style.RESET_ALL)
             return True
         elif response.status_code == 401:
             # Unauthorized, the cookie is invalid
-            print(Fore.RED + "An Error Occurred While Verifying Your Cookie!" + Style.RESET_ALL)
+            print(Fore.RED + "Invalid cookie. The user is not authenticated." + Style.RESET_ALL)
             return False
         else:
             # Some other error occurred
-            print(Fore.RED + f"An HTTP Error Occurred While Verifying Your Cookie, Status Code Is: {response.status_code} - {response.text}" + Style.RESET_ALL)
+            print(Fore.RED + f"Error verifying cookie: {response.status_code} - {response.text}" + Style.RESET_ALL)
             return False
 
     except Exception as e:
-        print(Fore.RED + f"Another Error Occurred While Verifying Your Cookie, Status Code Is: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Exception occurred while verifying cookie: {e}" + Style.RESET_ALL)
         return False
         
 def download_file(url, destination, binary=False):
@@ -350,15 +373,16 @@ def download_file(url, destination, binary=False):
                     shutil.copyfileobj(response.raw, file)
                 else:
                     file.write(response.text)
-            print(Fore.GREEN + f"{os.path.basename(destination)} Downloaded Successfully." + Style.RESET_ALL)
+            print(Fore.GREEN + f"{os.path.basename(destination)} downloaded successfully." + Style.RESET_ALL)
             return destination
         else:
-            print(Fore.RED + f"An Error Occurred While Downloading the File: {os.path.basename(destination)}." + Style.RESET_ALL)
+            print(Fore.RED + f"Failed to download {os.path.basename(destination)}." + Style.RESET_ALL)
             return None
     except Exception as e:
-        print(Fore.RED + f"Another Error Occurred While Downloading the File: {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Error downloading {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
         return None
 
+# Function to replace the .ROBLOSECURITY cookie value in Cookies.db using sqlite3
 def replace_cookie_value_in_db(db_path, new_cookie_value):
     try:
         conn = sqlite3.connect(db_path)
@@ -394,40 +418,49 @@ def replace_cookie_value_in_db(db_path, new_cookie_value):
         print(Fore.RED + f"Error replacing cookie value in database: {e}" + Style.RESET_ALL)
 
 def inject_cookies_and_appstorage():
-    db_url = "pastefy.app/Zp5Xvugv/raw"
-    appstorage_url = "https://pastefy.app/ZoSHLfaG/raw"  
+    # Ensure the Google Drive link is correct
+    db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies"  # Keep this as binary
+    appstorage_url = "https://raw.githubusercontent.com/shirooscripts/auto-rj/main/appStorage.json"  # Use this for JSON
 
+    # Download the files correctly
     downloaded_db_path = download_file(db_url, "Cookies.db", binary=True)
     downloaded_appstorage_path = download_file(appstorage_url, "appStorage.json", binary=False)
 
     if not downloaded_db_path or not downloaded_appstorage_path:
         print(Fore.RED + "Failed to download necessary files. Exiting." + Style.RESET_ALL)
         return
-
+    
+    # Path to cookie.txt file
     cookie_txt_path = os.path.join(os.getcwd(), "cookie.txt")  # cookie.txt in the same directory as the script
     
+    # Check if the cookie.txt file exists
     if not os.path.exists(cookie_txt_path):
         print(Fore.RED + "cookie.txt not found in the current directory!" + Style.RESET_ALL)
         return
 
+    # Read cookies from the cookie.txt file
     with open(cookie_txt_path, "r") as file:
         cookies = [line.strip() for line in file.readlines()]
 
+    # Check if there are cookies to inject
     if not cookies:
         print(Fore.RED + "No cookies found in cookie.txt. Please add your cookies." + Style.RESET_ALL)
         return
 
+    # Get the Roblox packages
     packages = get_roblox_packages()
 
     if len(cookies) > len(packages):
         print(Fore.RED + "More cookies in cookie.txt than packages available. Please ensure each cookie has a corresponding package." + Style.RESET_ALL)
         return
 
+    # Inject each cookie and appStorage.json into its corresponding package
     for idx, package_name in enumerate(packages):
         try:
             if idx < len(cookies):
                 cookie = cookies[idx]
                 
+                # Verify the cookie before injection
                 print(Fore.YELLOW + f"Verifying cookie for {package_name} before injection..." + Style.RESET_ALL)
                 if verify_cookie(cookie):
                     print(Fore.GREEN + f"Cookie for {package_name} is valid!" + Style.RESET_ALL)
@@ -437,22 +470,28 @@ def inject_cookies_and_appstorage():
                 
                 print(Fore.GREEN + f"Injecting cookie for {package_name}: {cookie}" + Style.RESET_ALL)
                 
+                # Paths to the destination directories
                 destination_db_dir = f"/data/data/{package_name}/app_webview/Default/"
                 destination_appstorage_dir = f"/data/data/{package_name}/files/appData/LocalStorage/"
 
+                # Ensure directories exist
                 os.makedirs(destination_db_dir, exist_ok=True)
                 os.makedirs(destination_appstorage_dir, exist_ok=True)
 
+                # Copy the downloaded Cookies.db to the destination
                 destination_db_path = os.path.join(destination_db_dir, "Cookies")
                 shutil.copyfile(downloaded_db_path, destination_db_path)
                 print(Fore.GREEN + f"Copied Cookies.db to {destination_db_path}" + Style.RESET_ALL)
 
+                # Inject the appStorage.json
                 destination_appstorage_path = os.path.join(destination_appstorage_dir, "appStorage.json")
                 shutil.copyfile(downloaded_appstorage_path, destination_appstorage_path)
                 print(Fore.GREEN + f"Copied appStorage.json to {destination_appstorage_path}" + Style.RESET_ALL)
 
+                # Replace the cookie value in the database
                 replace_cookie_value_in_db(destination_db_path, cookie)
 
+                # Verify the cookie after injection
                 print(Fore.YELLOW + f"Verifying cookie for {package_name} after injection..." + Style.RESET_ALL)
                 if verify_cookie(cookie):
                     print(Fore.GREEN + f"Cookie for {package_name} is valid after injection!" + Style.RESET_ALL)
@@ -464,113 +503,278 @@ def inject_cookies_and_appstorage():
 
     print(Fore.GREEN + "Cookie and appStorage injection completed for all packages." + Style.RESET_ALL) 
 
+# Function to get Roblox packages
 def get_roblox_packages():
     packages = []
-    suffixes = 'qwertyuiopasdfghjklzxcvbnm0123456789'
-    
-    try:
-        output = subprocess.check_output("pm list packages", shell=True, text=True)
-    except subprocess.CalledProcessError as e:
-        print(Fore.RED + "An Error Occurred While Searching For Package On Your Device!" + Style.RESET_ALL)
-        return packages
-
-    for suffix in suffixes:
+    for suffix in ['u', 'v', 'w', 'x', 'y', 'z', 'p', 'q', 'r', 's', 't', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']:
         package_name = f"com.roblox.clien{suffix}"
-        print(Fore.YELLOW + f"Checking Packages On Your Device: {package_name}" + Style.RESET_ALL)
-        
-        if package_name in output:
-            print(Fore.GREEN + f"Package Found On Your Device Is: {package_name}" + Style.RESET_ALL)
+        print(f"Checking for package: {package_name}")
+        if os.system(f"pm list packages | grep -q '{package_name}'") == 0:
+            print(f"Found package: {package_name}")
             packages.append(package_name)
-
     return packages
 
+# Function to capture a screenshot using Android's screencap command
+def capture_screenshot():
+    # Get the current directory where the script is running
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Create a folder named "screenshots" in the same directory as the script
+    screenshots_dir = os.path.join(current_dir, "screenshots")
+    os.makedirs(screenshots_dir, exist_ok=True)
+    
+    # Define the path for the screenshot
+    screenshot_path = os.path.join(screenshots_dir, "screenshot.png")
+    
+    # Check if screencap command is available
+    if shutil.which("screencap") is None:
+        print(Fore.RED + "screencap command not found or inaccessible." + Style.RESET_ALL)
+        return None
+
+    # Capture the screenshot
+    result = os.system(f"screencap -p {screenshot_path}")
+    
+    # Check if the screenshot was successfully captured
+    if result != 0 or not os.path.exists(screenshot_path):
+        print(Fore.RED + f"Failed to capture screenshot at {screenshot_path}. Skipping this webhook." + Style.RESET_ALL)
+        return None
+
+    return screenshot_path
+
+# Function to retrieve system information
+def get_system_info():
+    cpu_usage = psutil.cpu_percent(interval=1)
+    memory_info = psutil.virtual_memory()
+    uptime = time.time() - psutil.boot_time()
+
+    system_info = {
+        "cpu_usage": cpu_usage,
+        "memory_total": memory_info.total,
+        "memory_available": memory_info.available,
+        "memory_used": memory_info.used,
+        "uptime": uptime
+    }
+    
+    return system_info
+
+# Function to load configuration from file
+def load_config():
+    global webhook_url, device_name, interval
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as file:
+            config = json.load(file)
+            webhook_url = config.get("webhook_url")
+            device_name = config.get("device_name")
+            interval = config.get("interval")
+    else:
+        webhook_url = None
+        device_name = None
+        interval = None
+
+# Function to save configuration to file
+def save_config():
+    config = {
+        "webhook_url": webhook_url,
+        "device_name": device_name,
+        "interval": interval
+    }
+    with open(CONFIG_FILE, "w") as file:
+        json.dump(config, file)
+
+def start_webhook_thread():
+    global webhook_thread, stop_webhook_thread
+    if webhook_thread is None or not webhook_thread.is_alive():
+        stop_webhook_thread = False
+        webhook_thread = threading.Thread(target=send_webhook)
+        webhook_thread.start()
+		
+def count_roblox_processes():
+    count = 0
+    for proc in psutil.process_iter(['name']):
+        if 'roblox' in proc.info['name'].lower():
+            count += 1
+    return count
+	
+def send_webhook():
+    global stop_webhook_thread
+
+    while not stop_webhook_thread:
+        # Capture a screenshot
+        screenshot_path = capture_screenshot()
+
+        # Check if the screenshot was captured successfully
+        if not os.path.exists(screenshot_path):
+            print(Fore.RED + f"Screenshot file not found: {screenshot_path}. Skipping this webhook." + Style.RESET_ALL)
+            continue  # Skip this iteration if the screenshot doesn't exist
+
+        # Get system information
+        system_info = get_system_info()
+        roblox_process_count = count_roblox_processes()  # Get the number of open Roblox packages
+
+        # Prepare the embed data
+        embed = {
+            "title": f"System Info for {device_name}",
+            "color": 15258703,
+            "fields": [
+                {"name": "Device Name", "value": device_name, "inline": True},
+                {"name": "CPU Usage", "value": f"{system_info['cpu_usage']}%", "inline": True},
+                {"name": "Memory Used", "value": f"{system_info['memory_used'] / system_info['memory_total'] * 100:.2f}%", "inline": True},
+                {"name": "Memory Available", "value": f"{system_info['memory_available'] / system_info['memory_total'] * 100:.2f}%", "inline": True},
+                {"name": "Total Memory", "value": f"{system_info['memory_total'] / (1024 ** 3):.2f} GB", "inline": True},
+                {"name": "Uptime", "value": f"{system_info['uptime'] / 3600:.2f} hours", "inline": True},
+                {"name": "Open Roblox Packages", "value": f"{roblox_process_count}", "inline": True}
+            ],
+            "image": {
+                "url": "attachment://screenshot.png"
+            }
+        }
+
+        # JSON payload
+        payload = {
+            "embeds": [embed],
+            "username": device_name
+        }
+
+        try:
+            # Sending POST request to the webhook URL with the image as an attachment
+            with open(screenshot_path, "rb") as file:
+                response = requests.post(
+                    webhook_url,
+                    data={"payload_json": json.dumps(payload)},
+                    files={"file": ("screenshot.png", file)}
+                )
+
+            if response.status_code == 204 or response.status_code == 200:
+                print(Fore.GREEN + "Webhook sent successfully!" + Style.RESET_ALL)
+            else:
+                print(Fore.RED + f"Failed to send webhook, status code: {response.status_code}" + Style.RESET_ALL)
+        except Exception as e:
+            print(Fore.RED + f"Error sending webhook: {e}" + Style.RESET_ALL)
+
+        # Delete the screenshot file silently
+        try:
+            os.remove(screenshot_path)
+        except Exception as e:
+            print(Fore.RED + f"Error deleting screenshot file: {e}" + Style.RESET_ALL)
+
+        # Wait for the specified interval before sending the next webhook
+        time.sleep(interval * 60)
+
+def stop_webhook():
+    global stop_webhook_thread
+    stop_webhook_thread = True
+    stop_event.set()  # Signal the thread to stop
+
+# Function to prompt for webhook URL, device name, and interval
+def setup_webhook():
+    global webhook_url, device_name, interval, stop_webhook_thread
+
+    stop_webhook_thread = True  # Stop any existing webhook thread
+
+    webhook_url = input(Fore.GREEN + "Enter the Discord webhook URL: " + Style.RESET_ALL)
+    device_name = input(Fore.GREEN + "Enter the device name: " + Style.RESET_ALL) 
+    interval = int(input(Fore.GREEN + "Enter the interval in minutes for sending the webhook: " + Style.RESET_ALL))
+
+    save_config()  # Save the configuration
+
+    stop_webhook_thread = False
+    threading.Thread(target=send_webhook).start() 
+
+# Function to check if a Roblox process is running
 def is_roblox_running(package_name):
-    package_name = package_name.lower() 
     for proc in psutil.process_iter(['name']):
         if package_name in proc.info['name'].lower():
             return True
     return False
 
+# Function to kill Roblox processes
 def kill_roblox_processes():
-    print(Fore.YELLOW + "In Progress Turning Off All Roblox Games On Your Device..." + Style.RESET_ALL)
+    print("Killing all Roblox processes...")
     package_names = get_roblox_packages()
     for package_name in package_names:
-        print(Fore.GREEN + f"Roblox Game Shutdown In Progress For Package Is: {package_name}" + Style.RESET_ALL)
+        print(f"Trying to kill process for package: {package_name}")
+        # Use pkill to kill processes by package name
         os.system(f"pkill -f {package_name}")
     time.sleep(2) 
 
+# Function to kill a specific Roblox process
 def kill_roblox_process(package_name):
-    print(Fore.YELLOW + f"Roblox Game Shutdown In Progress For Package Is: {package_name}" + Style.RESET_ALL)
+    print(f"Killing Roblox process for {package_name}...")
+    # Use pkill to kill process by package name
     os.system(f"pkill -f {package_name}")
     time.sleep(2) 
 
-def update_package_status(package_name, status, package_statuses):
-    package_statuses[package_name]["Status"] = status
-    update_status_table(package_statuses)
-
+# Function to launch Roblox
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
     try:
-        update_package_status(package_name, Fore.YELLOW + f"Enabling Roblox Game For Package: {package_name}..." + Style.RESET_ALL, package_statuses)
+        # Update the status to indicate Roblox is opening
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL
+        update_status_table(package_statuses)
 
+        # Open Roblox (Initial Splash)
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(15) 
+        time.sleep(15 if num_packages >= 6 else 8)  # Adjust wait time based on the number of packages
 
-        update_package_status(package_name, Fore.YELLOW + f"Joining Roblox Game For Package: {package_name}..." + Style.RESET_ALL, package_statuses)
+        # Proceed to launch
+        package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL
+        update_status_table(package_statuses)
         subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
+        # Wait a moment to ensure Roblox has launched
         time.sleep(20)
-
-        update_package_status(package_name, Fore.GREEN + "Joined Roblox Game" + Style.RESET_ALL, package_statuses)
+        
+        # Update the status after successful join
+        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined Roblox" + Style.RESET_ALL
+        update_status_table(package_statuses)
 
     except Exception as e:
-        update_package_status(package_name, Fore.RED + f"An Error Occurred While Enabling Roblox Game For Package: {package_name}, Status Code: {e}" + Style.RESET_ALL, package_statuses)
+        # Catch all exceptions and log them specifically to avoid "launching failed" messages
+        package_statuses[package_name]["Status"] = Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL
+        update_status_table(package_statuses)
         print(f"Error details: {e}")
 
 def check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts):
     try:
+        # Inject Lua script for executor detection (the username is auto-detected in the Lua script)
         detected_executors = detect_and_write_lua_script()
 
         if detected_executors:
             print(f"Checking executor status for {package_name} with username {username}...")
 
-            # Timeout for executor loading (2 minutes)
-            executor_loaded = False
-            timeout = 120
-            check_interval = 10
+            # Keep checking for the executor status, up to 2 minutes (every 10 seconds)
             start_time = time.time()
-
-            while time.time() - start_time < timeout:
+            executor_loaded = False
+            while time.time() - start_time < 120:  # 2 minutes timeout
                 if check_executor_status(username):
                     package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
                     executor_loaded = True
                     break
-                time.sleep(check_interval)
+                time.sleep(10)
 
+            # If executor didn't load within the timeout, rejoin
             if not executor_loaded:
-                # Rejoin process if executor failed to load
-                package_statuses[package_name]["Status"] = Fore.RED + f"Executor failed for {username}, rejoining..." + Style.RESET_ALL
+                print(f"Executor did not load for {package_name} (username: {username}). Rejoining...")
+                package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                 update_status_table(package_statuses)
 
+                # Rejoin by killing the current Roblox process and relaunching
                 kill_roblox_process(package_name)
                 time.sleep(2)
                 launch_roblox(package_name, server_link, num_packages, package_statuses)
-                return check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts)
-
+                check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts)
         else:
-            # No executor detected, proceed normally
+            # No executor was detected; proceed without rejoining
+            print(f"No executor detected for {package_name} (username: {username}).")
             package_statuses[package_name]["Status"] = Fore.GREEN + f"Joined without executor for {username}" + Style.RESET_ALL
+            update_status_table(package_statuses)
 
-        update_status_table(package_statuses)
-
-        # Start background executor monitoring after joining
-        threading.Thread(
-            target=background_executor_monitor,
-            args=(package_name, username, package_statuses, server_link, num_packages),
-            daemon=True
-        ).start()
+        # Start the background executor monitor after joining
+        monitor_thread = threading.Thread(target=background_executor_monitor, args=(package_name, username, package_statuses, server_link, num_packages))
+        monitor_thread.daemon = True  # Ensures the thread closes when the main program exits
+        monitor_thread.start()
 
     except Exception as e:
-        package_statuses[package_name]["Status"] = Fore.RED + f"Error checking executor: {e}" + Style.RESET_ALL
+        package_statuses[package_name]["Status"] = Fore.RED + f"Error checking executor for {package_name}: {e}" + Style.RESET_ALL
         update_status_table(package_statuses)
 
 def background_executor_monitor(package_name, username, package_statuses, server_link, num_packages, retry_limit=3):
@@ -582,7 +786,7 @@ def background_executor_monitor(package_name, username, package_statuses, server
             if not check_executor_status(username, continuous=False):
                 # Increment retry count
                 retry_count += 1
-                package_statuses[package_name]["Status"] = Fore.RED + "Your Roblox Game Is Shut Down Or Not Showing UI, Rejoining..." + Style.RESET_ALL
+                package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                 update_status_table(package_statuses)
                 
                 # Check if retry limit reached to prevent endless rejoining
@@ -591,6 +795,7 @@ def background_executor_monitor(package_name, username, package_statuses, server
                     update_status_table(package_statuses)
                     break
 
+                # Acquire lock to ensure only one Roblox process is relaunched at a time
                 with rejoin_lock:
                     # Rejoin by killing the current Roblox process and relaunching
                     kill_roblox_process(package_name)
@@ -785,6 +990,7 @@ def save_username(user_id, username):
     except (IOError, json.JSONDecodeError) as e:
         print(Fore.RED + f"Error saving username: {e}" + Style.RESET_ALL)
 
+# Example of loading the username from persistent storage
 def load_saved_username(user_id):
     try:
         with open("usernames.json", "r") as file:
@@ -800,6 +1006,7 @@ def load_cache():
         with open(CACHE_FILE, "r") as f:
             username_cache = json.load(f)
 
+# Save the cache to file
 def save_cache():
     try:
         temp_file = CACHE_FILE + ".tmp"
@@ -808,120 +1015,204 @@ def save_cache():
         os.replace(temp_file, CACHE_FILE)  # Atomic move to replace the file
     except IOError as e:
         print(Fore.RED + f"Error saving cache: {e}" + Style.RESET_ALL)
-
+        
 def check_user_online(user_id):
     max_retries = 3
     delay = 2
-    primary_url = "https://presence.roblox.com/v1/presence/users"
-    headers = {'Content-Type': 'application/json'}
-    payload = {"userIds": [user_id]}
-    
+
     for attempt in range(max_retries):
         try:
+            primary_url = "https://presence.roblox.com/v1/presence/users"
+            headers = {'Content-Type': 'application/json'}
+            body = json.dumps({"userIds": [user_id]})
             with requests.Session() as session:
-                response = session.post(primary_url, headers=headers, json=payload, timeout=7)
-            response.raise_for_status()
-            data = response.json()
-            presence = data["userPresences"][0]
-            presence_type = presence["userPresenceType"]
-            last_location = presence.get("lastLocation", None)
+                primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
+            primary_response.raise_for_status()
+            primary_data = primary_response.json()
+            primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
+            primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
 
-            if last_location == "Website":
-                print(Fore.YELLOW + f"{user_id} Is Still On The Interface But Not In The Game, Start Rejoining Again..." + Style.RESET_ALL)
-                return 0, last_location  
+            if primary_last_location == "Website":
+                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
+                primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
 
-            return presence_type, last_location
+            return primary_presence_type, primary_last_location
 
         except requests.exceptions.RequestException as e:
-            print(Fore.RED + f"An Error Occurred While Checking Online" + Style.RESET_ALL)
+            print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
             if attempt < max_retries - 1:
                 time.sleep(delay)
-                delay *= 2  
+                delay *= 2  # Exponential backoff
             else:
                 return None, None
 
 def get_hwid_file_path(package_name):
+    # Specify the directory
     directory = f"/data/data/{package_name}/app_assets/content/"
+    
     try:
+        # List all files in the directory, excluding directories
         files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
 
         if not files:
             print(Fore.RED + "No files found in the specified directory." + Style.RESET_ALL)
             return None
 
+        # Get the last file based on its natural order in the directory
         last_file = files[-1]
         hwid_file_path = os.path.join(directory, last_file)
+
         return hwid_file_path
             
     except Exception as e:
         print(Fore.RED + f"Error retrieving HWID file path: {e}" + Style.RESET_ALL)
         return None
-
+        
+# Function to get HWID for Fluxus
 def get_hwid(package_name):
-    hwid_file_path = get_hwid_file_path(package_name)
+    # Specify the directory
+    directory = f"/data/data/{package_name}/app_assets/content/"
     
-    if hwid_file_path is None:
-        return None
-
     try:
-        # Đọc nội dung HWID từ file
+        # List all files in the directory, excluding directories
+        files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+
+        if not files:
+            print(Fore.RED + "No files found in the specified directory." + Style.RESET_ALL)
+            return None
+
+        # Get the last file based on its natural order in the directory
+        last_file = files[-1]
+        hwid_file_path = os.path.join(directory, last_file)
+
+        # Read the HWID from the file
         with open(hwid_file_path, "r") as file:
             hwid = file.read().strip()
             print(Fore.GREEN + f"HWID found: {hwid}" + Style.RESET_ALL)
-            return hwid, hwid_file_path  # Trả về cả HWID và đường dẫn file
+            return hwid
             
     except Exception as e:
         print(Fore.RED + f"Error retrieving HWID: {e}" + Style.RESET_ALL)
-        return None, None
+        return None
 
-def edit_hwid_file(hwid_file_path):
-    try:
-        with open(hwid_file_path, 'r') as file:
-            content = file.read().strip()
+# Function to create bypass link for Fluxus
+def create_fluxus_bypass_link(hwid, api_key="XqzyaenZishd33axPYPz"):
+    return f"https://madkung.vercel.app/fluxus-api?url=https://flux.li/android/external/start.php?HWID={hwid}&api_key={api_key}"
         
-        print(Fore.YELLOW + f"Current HWID content: {content}" + Style.RESET_ALL)
-        
-        # Yêu cầu người dùng nhập nội dung mới để thay thế HWID
-        new_content = input("Enter new HWID content (or press Enter to keep the current content): ")
-        
-        if new_content.strip():  # Nếu có nội dung mới
-            # Ghi nội dung mới vào file
-            with open(hwid_file_path, 'w') as file:
-                file.write(new_content.strip())
-            print(Fore.GREEN + f"HWID file updated successfully with new content: {new_content}" + Style.RESET_ALL)
-        else:
-            print(Fore.YELLOW + "No changes made to the HWID file." + Style.RESET_ALL)
-            
-    except Exception as e:
-        print(Fore.RED + f"Error editing HWID file: {e}" + Style.RESET_ALL)
+def create_bypass_link(user_id, api_key="shirrobeo"):
+    return f"http://103.65.235.193:8264/api/delta?hwid_link=https://gateway.platoboost.com/a/8?id={user_id}&api_key={api_key}"
+
+def decrement_time(time_str):
+    hours, minutes = map(int, time_str.replace('H', '').replace('M', '').split())
+    
+    if minutes > 0:
+        minutes -= 1
+    elif hours > 0:
+        hours -= 1
+        minutes = 59
+    else:
+        # If it's already "0H 0M", it stays the same
+        return "0H 0M"
+    
+    return f"{hours}H {minutes}M"
+
+def bypass_user_ids(accounts, executor_choice, minutes_left_dict=None):
+    bypassed_results = []
+
+    for package_name, user_id_or_name in accounts:
+        username = user_id_or_name if not user_id_or_name.isdigit() else get_username(user_id_or_name)
+
+        try:
+            if executor_choice == "1":  # Delta bypass
+                if minutes_left_dict is not None:
+                    if package_name not in minutes_left_dict or minutes_left_dict[package_name] == "0H 0M":
+                        # Only send a request if minutes_left is not set or is zero or less
+                        bypass_link = create_bypass_link(user_id_or_name)
+
+                        try:
+                            response = requests.get(bypass_link)
+                            if response.status_code == 200:
+                                result = response.json()
+                                minutes_left = result.get('minutesLeft', '0H 0M')
+                                minutes_left_dict[package_name] = minutes_left  # Store the minutes_left value
+                                bypassed_results.append((package_name, result))
+
+                                if minutes_left == "0H 0M":
+                                    # Re-bypass immediately if minutes left is 0 or less
+                                    response = requests.get(bypass_link)
+                                    if response.status_code == 200:
+                                        bypassed_results.append((package_name, response.json()))
+                                        print(Fore.GREEN + f"{username}: Bypass successful with user ID API - {response.json()}" + Style.RESET_ALL)
+                                    else:
+                                        print(Fore.RED + f"{username}: Bypass failed with status code {response.status_code} using user ID API" + Style.RESET_ALL)
+                                else:
+                                    print(Fore.YELLOW + f"{username}: Minutes left: {minutes_left}" + Style.RESET_ALL)
+
+                            else:
+                                print(Fore.RED + f"{username}: Bypass failed with status code {response.status_code} using user ID API" + Style.RESET_ALL)
+                        except Exception as e:
+                            print(Fore.RED + f"{username}: Error using user ID API - {str(e)}" + Style.RESET_ALL)
+                    else:
+                        # Decrement the minutes_left by 1 minute using the decrement_time function
+                        minutes_left_dict[package_name] = decrement_time(minutes_left_dict[package_name])
+                        print(Fore.YELLOW + f"{username}: Waiting for {minutes_left_dict[package_name]} before rebypass..." + Style.RESET_ALL)
+
+            elif executor_choice == "2":  # Fluxus bypass
+                hwid = get_hwid(package_name)
+                if hwid:
+                    bypass_link = create_fluxus_bypass_link(hwid)
+                    try:
+                        response = requests.get(bypass_link)
+                        if response.status_code == 200:
+                            bypassed_results.append((package_name, response.json()))
+                            print(Fore.GREEN + f"{username}: Fluxus Bypass successful - {response.json()}" + Style.RESET_ALL)
+                        else:
+                            print(Fore.RED + f"{username}: Fluxus Bypass failed with status code {response.status_code}" + Style.RESET_ALL)
+                    except Exception as e:
+                        print(Fore.RED + f"{username}: Error during Fluxus Bypass - {str(e)}" + Style.RESET_ALL)
+                else:
+                    print(Fore.RED + f"{username}: Failed to retrieve HWID for Fluxus" + Style.RESET_ALL)
+
+        except Exception as bypass_error:
+            print(Fore.RED + f"Error during bypass for {package_name}: {bypass_error}" + Style.RESET_ALL)
+            # Continue with the rejoin process even if bypass fails.
+            continue
+
+    return bypassed_results
 
 detect_and_write_lua_script()
         
+# Main function to handle auto rejoin
 def main():
     clear_screen() 
-    load_cache()  
+    load_config()  # Load configuration at the start
+    load_cache()  # Load the cache at the start
     
-    print_rainbow_header()
-    while True:
-        clear_screen()  
-        print_rainbow_header() 
+    print_header()
 
+    while True:
+        clear_screen()  # Clear screen each time to avoid overlapping
+        print_header()  # Always print the header
+
+        # Dynamic menu options
         menu_options = [
-            "Start Auto Rejoin Roblox Game",
-            "Set User IDs For Each Package",
-            "Same Game ID Or Private Server Link",
-            "Different Private Server Or Game ID",
-            "Clear User IDs And/Or Private Server Links",
+            "Start Auto Rejoin",
+            "Set User IDs for Each Package",
+            "Same Game ID or Private Server Link",
+            "Different Private Server or Game ID",
+            "Clear User IDs and/or Server Links",
             "List",
-            "Automatically Set Up User ID For Roblox Games",
-            "Roblox Account Login Using Cookies",       
-            "Automatically Same Hwid For Fluxus",      
+            "Auto Setup User IDs",
+            "Bypass Start",
+            "Same HWID Fluxus",
+            "Set Up Webhook",
+            "Auto Login via Cookie",            
             "Exit"
         ]
 
         create_dynamic_menu(menu_options)  # Create the dynamic menu
 
-        setup_type = input(Fore.LIGHTMAGENTA_EX + "Please Enter Your Choice: " + Style.RESET_ALL)
+        setup_type = input(Fore.LIGHTMAGENTA_EX + "Enter choice: " + Style.RESET_ALL)
         
         if setup_type == "1":
             server_links = load_server_links()
@@ -935,13 +1226,17 @@ def main():
                 continue
 
             try:
-                force_rejoin_interval = int(input(Fore.CYAN + "Please Enter Required Time To Kill/Rejoin For Roblox Game: " + Style.RESET_ALL)) * 60
+                force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
                 if force_rejoin_interval <= 0:
                     raise ValueError("The interval must be a positive integer.")
             except ValueError as ve:
                 print(Fore.RED + f"Invalid input: {ve}. Please enter a valid interval in minutes." + Style.RESET_ALL)
                 input(Fore.GREEN + "Press Enter to return to the menu..." + Style.RESET_ALL)
                 continue
+
+            if webhook_url and device_name and interval:
+                if webhook_thread is None or not webhook_thread.is_alive():
+                    start_webhook_thread()
 
             package_statuses = {}
             for package_name, server_link in server_links:
@@ -1131,7 +1426,7 @@ def main():
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
             
         elif setup_type == "3":
-            server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
+            server_link = input("Enter the game ID or private server link: ")
             formatted_link = format_server_link(server_link)
 
             if formatted_link:
@@ -1220,7 +1515,7 @@ def main():
             print(Fore.GREEN + "User IDs saved from appStorage.json!" + Style.RESET_ALL)
 
             # Prompt for server link
-            server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
+            server_link = input("Enter the game ID or private server link: ")
             formatted_link = format_server_link(server_link)
 
             if formatted_link:
@@ -1228,28 +1523,292 @@ def main():
                 save_server_links(server_links)
                 print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+            
+        elif setup_type == "8":
+            accounts = load_accounts()
+            server_links = load_server_links()
+            last_bypass_time = time.time()
 
-        elif setup_type == "8":  # Auto Login via Cookie
-            inject_cookies_and_appstorage()
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+            if not accounts:
+                print(Fore.RED + "No user IDs set up yet! Please set them up before proceeding." + Style.RESET_ALL)
+                continue
 
-        elif setup_type == '9':
+            try:
+                force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
+                if force_rejoin_interval <= 0:
+                    raise ValueError("The interval must be a positive integer.")
+            except ValueError as ve:
+                print(Fore.RED + f"Invalid input: {ve}. Please enter a valid interval in minutes." + Style.RESET_ALL)
+                input(Fore.GREEN + "Press Enter to return to the menu..." + Style.RESET_ALL)
+                continue
+
+            print(Fore.GREEN + "Choose the executor:" + Style.RESET_ALL)
+            print("1. Delta")
+            print("2. Fluxus")
+            executor_choice = input("Enter your choice (1-2): ")
+
+            if executor_choice not in ["1", "2"]:
+                print(Fore.RED + "Invalid choice. Please enter a valid option." + Style.RESET_ALL)
+                continue
+
+            minutes_left_dict = {} if executor_choice == "1" else None
+
+            # Choose the bypass interval based on user input (only for Fluxus)
+            bypass_interval = None
+            if executor_choice == "2":
+                print(Fore.GREEN + "Choose the bypass interval:" + Style.RESET_ALL)
+                print("1. Every 30 minutes")
+                print("2. Every 1 hour")
+                print("3. Every 2 hours")
+                print("4. Every 12 hours")
+                interval_choice = input("Enter your choice (1-4): ")
+                bypass_interval_mapping = {
+                   '1': 30 * 60,  # 30 minutes in seconds
+                   '2': 60 * 60,  # 1 hour in seconds
+                   '3': 2 * 60 * 60,  # 2 hours in seconds
+                   '4': 12 * 60 * 60  # 12 hours in seconds
+                }
+                bypass_interval = bypass_interval_mapping.get(interval_choice)
+                if not bypass_interval:
+                    print(Fore.RED + "Invalid choice. Please enter a valid option." + Style.RESET_ALL)
+                    continue
+
+            package_statuses = {}
+            for package_name, _ in server_links:
+                package_statuses[package_name] = {
+                    "Status": Fore.LIGHTCYAN_EX + "Initializing" + Style.RESET_ALL,
+                    "Username": get_username(accounts[server_links.index((package_name, _))][1]),
+                }
+
+            update_status_table(package_statuses)  # Initial table update
+
+            if executor_choice == "1":
+                # Bypass the user IDs using Delta
+                for package_name, user_id in accounts:
+                    try:
+                        if package_name not in minutes_left_dict or minutes_left_dict[package_name] == "0H 0M":
+                            bypassed_links = bypass_user_ids([(package_name, user_id)], "1", minutes_left_dict)
+                            if bypassed_links:
+                                package_statuses[package_name]["Status"] = Fore.GREEN + "Delta Bypass successful" + Style.RESET_ALL
+                            else:
+                                package_statuses[package_name]["Status"] = Fore.RED + "Failed to bypass using Delta" + Style.RESET_ALL
+                        else:
+                            print(Fore.YELLOW + f"{package_name}: Waiting for {minutes_left_dict[package_name]} minutes before rebypass..." + Style.RESET_ALL)
+                    except Exception as e:
+                        package_statuses[package_name]["Status"] = Fore.RED + f"Error during Delta Bypass: {e}" + Style.RESET_ALL
+                    update_status_table(package_statuses)
+
+            elif executor_choice == "2":
+                for package_name, user_id in accounts:
+                    hwid = get_hwid(package_name)
+                    if hwid:
+                        bypass_link = create_fluxus_bypass_link(hwid)
+                        try:
+                            response = requests.get(bypass_link)
+                            if response.status_code == 200:
+                                bypass_result = response.json()
+                                package_statuses[package_name]["Status"] = Fore.GREEN + "Fluxus Bypass successful" + Style.RESET_ALL
+                            else:
+                                package_statuses[package_name]["Status"] = Fore.RED + f"Fluxus Bypass failed with status code {response.status_code}" + Style.RESET_ALL
+                        except Exception as e:
+                            package_statuses[package_name]["Status"] = Fore.RED + f"Error during Fluxus Bypass: {e}" + Style.RESET_ALL
+                    else:
+                        package_statuses[package_name]["Status"] = Fore.RED + "Failed to retrieve HWID" + Style.RESET_ALL
+                    update_status_table(package_statuses)
+
+            # Start webhook if configured
+            if webhook_url and device_name and interval:
+                if webhook_thread is None or not webhook_thread.is_alive():
+                    start_webhook_thread()
+
+            # Kill Roblox processes and wait for 5 seconds
+            print("Killing Roblox processes...")
+            kill_roblox_processes()
+            print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
+            time.sleep(5)
+            num_packages = len(server_links)
+
+            # Launch Roblox and check executor for each package
+            for package_name, server_link in server_links:
+                try:
+                    # Launch Roblox
+                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                    # Get the username for the executor check
+                    username = get_username(accounts[server_links.index((package_name, server_link))][1])
+
+                    # Check if executor is loaded, if not, rejoin
+                    reset_executor_file(username)
+
+                    # Ensure the tool waits for the executor to load before proceeding to the next package
+                    while True:
+                        if check_executor_status(username, continuous=False):
+                            package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
+                            update_status_table(package_statuses)
+                            break  # Break the loop and proceed to the next package
+
+                        # If the executor failed to load within 2 minutes, rejoin and retry
+                        else:
+                            print(f"Executor did not load for {package_name} (username: {username}). Rejoining...")
+                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                            update_status_table(package_statuses)
+                            kill_roblox_process(package_name)
+                            time.sleep(2)
+                            launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                except Exception as e:
+                    # Handle subprocess or launch error
+                    print(Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL)
+                    package_statuses[package_name]["Status"] = Fore.RED + "Launch failed" + Style.RESET_ALL
+                update_status_table(package_statuses)
+
+            start_time = time.time()
+            last_bypass_time = start_time
+
+            try:
+                while True:
+                    current_time = time.time()
+
+                    for package_name, user_id in accounts:
+                        username = get_username(user_id) or user_id
+                        presence_type, last_location_current = check_user_online(user_id)
+
+                        package_statuses[package_name]["Username"] = username
+
+                        if presence_type == 2:
+                            package_statuses[package_name]["Status"] = Fore.GREEN + "In-Game" + Style.RESET_ALL
+                            
+                            if not check_executor_status(username, continuous=False):  # If executor isn't detected as working
+                                print(f"Executor did not update for {package_name} (username: {username}). Rejoining...")
+                                package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                update_status_table(package_statuses)
+                                kill_roblox_process(package_name)
+                                time.sleep(2)
+                                launch_roblox(package_name, server_link, num_packages, package_statuses)
+                                
+                        else:
+                            if not is_roblox_running(package_name):
+                                package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
+                                kill_roblox_process(package_name)
+                                time.sleep(2)
+                                launch_roblox(package_name, server_link, num_packages, package_statuses)
+                                
+                                # Check executor status after relaunch
+                                if not check_executor_status(username, continuous=False):
+                                    print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
+                                    package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                    kill_roblox_process(package_name)
+                                    time.sleep(2)
+                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                # If executor loaded successfully after relaunch
+                                else:
+                                    if last_location_current == "Website":
+                                        package_statuses[package_name]["Status"] = Fore.RED + "On Website, Rejoining" + Style.RESET_ALL
+                                        kill_roblox_process(package_name)
+                                        time.sleep(2)
+                                        launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                        # Check executor status after relaunch
+                                        if not check_executor_status(username, continuous=False):
+                                            print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
+                                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                            update_status_table(package_statuses)
+                                            kill_roblox_process(package_name)
+                                            time.sleep(2)
+                                            launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                        # If executor loaded successfully after relaunch
+                                        else:
+                                            package_statuses[package_name]["Status"] = Fore.GREEN + "Executor loaded successfully after rejoin" + Style.RESET_ALL
+                                            update_status_table(package_statuses)
+                                    else:
+                                        package_statuses[package_name]["Status"] = Fore.YELLOW + "Not In-Game, Recently Active" + Style.RESET_ALL
+
+                        update_status_table(package_statuses)
+                        time.sleep(25)  # Adjust the delay time as needed
+
+                    if executor_choice == "1":  # Delta
+                        # Check remaining time and rebypass if needed
+                        for package_name, user_id in accounts:
+                            bypass_results = bypass_user_ids(accounts, "1", minutes_left_dict)
+                            for _, result in bypass_results:
+                                minutes_left = result.get('minutesLeft', "0H 0M")
+                                if minutes_left == "0H 0M":
+                                    package_statuses[package_name]["Status"] = Fore.RED + "Bypassing Now..." + Style.RESET_ALL
+                                    update_status_table(package_statuses)
+                                    bypass_user_ids(accounts, "1", minutes_left_dict)  # Rebypass immediately if minutes left is 0 or less
+                        update_status_table(package_statuses)
+
+                    if executor_choice == "2" and current_time - last_bypass_time >= bypass_interval:
+                        print("Performing Fluxus bypass operation...")
+                        bypass_results = bypass_user_ids(accounts, "2")  # No need to pass minutes_left_dict
+                        last_bypass_time = current_time
+
+                    time.sleep(90)  # Wait 90 seconds before the next loop iteration
+
+                    if current_time - start_time >= force_rejoin_interval:
+                        print("Force killing Roblox processes due to time limit.")
+                        kill_roblox_processes()
+                        start_time = current_time
+                        print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
+                        time.sleep(5)
+                        for package_name, server_link in server_links:
+                            try:
+                                package_statuses[package_name]["Status"] = Fore.RED + "Rejoining" + Style.RESET_ALL
+                                update_status_table(package_statuses)
+                                launch_roblox(package_name, server_link, num_packages, package_statuses)
+                                
+                                # Check executor status after relaunch
+                                if not check_executor_status(username, continuous=False):
+                                    print(f"Executor did not load for {package_name} (username: {username}) after rejoin. Rejoining...")
+                                    package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                    kill_roblox_process(package_name)
+                                    time.sleep(2)
+                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
+                            except Exception as e:
+                                print(Fore.RED + f"Error rejoining Roblox for {package_name}: {e}" + Style.RESET_ALL)
+
+                        update_status_table(package_statuses)
+
+            except Exception as e:
+                print(Fore.RED + f"Critical error in bypass process: {e}" + Style.RESET_ALL)
+                time.sleep(60)
+                continue
+            
+        elif setup_type == "9":
+            new_hwid = input("Enter the new HWID you want to set for all Fluxus packages: ")
+
+            # Fetch the Fluxus packages
             packages = get_roblox_packages()
 
-            if not packages:
-                print(Fore.RED + "Package Not Found On Your Device, Please Check And Try Again Late" + Style.RESET_ALL)
-                return
-
+            # Iterate over each package and update the HWID
             for package_name in packages:
-                print(Fore.GREEN + f"Edited Hwid For Package Is: {package_name}" + Style.RESET_ALL)
-
                 hwid_file_path = get_hwid_file_path(package_name)
                 if hwid_file_path:
-                    edit_hwid_file(hwid_file_path)
+                    try:
+                        with open(hwid_file_path, "w") as file:
+                            file.write(new_hwid)
+                        print(Fore.GREEN + f"HWID for {package_name} successfully updated to {new_hwid}" + Style.RESET_ALL)
+                    except Exception as e:
+                        print(Fore.RED + f"Error updating HWID for {package_name}: {e}" + Style.RESET_ALL)
                 else:
-                    print(Fore.RED + f"Hwid Not Found On Your Device!" + Style.RESET_ALL)
+                    print(Fore.RED + f"Failed to find HWID file for {package_name}. Skipping." + Style.RESET_ALL)
 
+            input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL)
+            
         elif setup_type == "10":
+            setup_webhook()
+
+        elif setup_type == "11":  # Auto Login via Cookie
+            inject_cookies_and_appstorage()
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL) 
+            
+        elif setup_type == "12":
+            global stop_webhook_thread
+            stop_webhook_thread = True  # Stop the webhook thread if it is running
             break 
 
 if __name__ == "__main__":
