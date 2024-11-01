@@ -34,209 +34,22 @@ username_cache = {}
 CACHE_FILE = "username_cache.json"
 cache_save_interval = 600  
 stop_event = threading.Event()
-    
-executors = {
-    "Fluxus": "/storage/emulated/0/Fluxus/",
-    "Codex": "/storage/emulated/0/Codex/",
-    "Arceus X": "/storage/emulated/0/Arceus X/",
-    "Delta": "/storage/emulated/0/Delta/",
-    "Cryptic": "/storage/emulated/0/Cryptic/"
-}
-
-workspace_paths = []
-
-for executor, base_path in executors.items():
-    workspace_paths.append(f"{base_path}Workspace")   
-    workspace_paths.append(f"{base_path}workspace")  
-    
-lua_script_template = '''
-local GuiService = game:GetService("GuiService")
-local Players = game:GetService("Players")
-local os_time = os.time()
-
-getgenv().StopUpdate = false
-
-GuiService.ErrorMessageChanged:Connect(function()
-    if GuiService:GetErrorCode().Value >= Enum.ConnectionError.DisconnectErrors.Value then
-        getgenv().StopUpdate = true
-    end
-end)
-
-repeat wait() until game.JobId ~= nil
-
-local function UIExecutorStatus(status)
-    print("https://discord.gg/fqNxktESCH")
-    local username = Players.LocalPlayer.Name  
-    local currentTime = os.time() 
-    local success, err = pcall(function() 
-        writefile("executor_check_" .. username .. ".txt", status .. ":" .. currentTime) 
-    end)
-
-    if not success then
-        warn("An Error Occurred While Rewriting File Status")  
-    end
-end
-
-UIExecutorStatus("working")
-
-while not getgenv().StopUpdate do
-    wait(1)  
-    UIExecutorStatus("working") 
-end
-'''
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def print_rainbow_header():
+def print_header():
     os.system('cls' if os.name == 'nt' else 'clear')
     header = r"""
-____  ___                           ___ ___         ___.    
-\   \/  /  ____  _______   ____    /   |   \  __ __ \_ |__  
- \     / _/ __ \ \_  __ \ /  _ \  /    ~    \|  |  \ | __ \ 
- /     \ \  ___/  |  | \/(  <_> ) \    Y    /|  |  / | \_\ \
-/___/\  \ \___  > |__|    \____/   \___|_  / |____/  |___  /
-      \_/     \/                         \/              \/     
+  _____ _             _   _               ____       _       _       
+ |  ___| | ___   __ _| |_(_)_ __   __ _  |  _ \ ___ (_) ___ (_)_ __  
+ | |_  | |/ _ \ / _` | __| | '_ \ / _` | | |_) / _ \| |/ _ \| | '_ \ 
+ |  _| | | (_) | (_| | |_| | | | | (_| | |  _ <  __/| | (_) | | | | |
+ |_|   |_|\___/ \__,_|\__|_|_| |_|\__, | |_| \_\___|/ |\___/|_|_| |_|
+                                  |___/           |__/               
 """
-    color = Fore.RED  
-
-    for line in header.splitlines():
-        for char in line:
-            print(color + char, end='')
-        print(Style.RESET_ALL)
-
-print_rainbow_header()
-
-def detect_and_write_lua_script():
-    detected_executors = []
-
-    for executor_name, base_path in executors.items():
-        possible_autoexec_paths = [
-            os.path.join(base_path, "Autoexec"),
-            os.path.join(base_path, "Autoexecute")
-        ]
-
-        lua_written = False  # To track if Lua file is successfully written
-
-        for path in possible_autoexec_paths:
-            if os.path.exists(path):
-                # Lua script path
-                lua_script_path = os.path.join(path, "executor_check.lua")
-                
-                try:
-                    # Write the Lua script to the detected Autoexec/Autoexecute folder
-                    with open(lua_script_path, 'w') as file:
-                        file.write(lua_script_template)  # Assume lua_script_template is predefined
-                    lua_written = True  # Mark Lua script as written
-                    break  # Stop checking further paths once written
-
-                except Exception:
-                    pass  # Silently ignore errors
-
-        if lua_written:
-            detected_executors.append(executor_name)
-
-    return detected_executors
-
-def reset_executor_file(username):
-    """
-    Clears any existing executor status file for the given username.
-    This ensures a fresh start each time Roblox is launched, only in a valid Workspace path (lowercase or uppercase).
-    """
-    status_file = f"executor_check_{username}.txt"
-    valid_workspace = None  # Will store the valid workspace path once detected
-
-    # Search only in Workspace paths (uppercase 'W' and lowercase 'w')
-    for executor, base_path in executors.items():
-        for workspace_dir in ["workspace", "Workspace"]:
-            workspace_path = os.path.join(base_path, workspace_dir)
-            if os.path.exists(workspace_path):
-                valid_workspace = workspace_path
-                break  # Exit the loop once a valid workspace is found
-
-        if valid_workspace:
-            # Clear the status file in the detected workspace
-            file_path = os.path.join(valid_workspace, status_file)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)  # Clear the status file for a fresh start
-                    # The print statements have been removed as intended
-                except Exception as e:
-                    pass  # Ignore the error silently
-            break  # Exit the executor loop once the file is removed
-
-def clear_executor_status(username):
-    """
-    Clears any existing executor status file for the given username.
-    This ensures a fresh start each time Roblox is launched, only in a valid Workspace path (lowercase or uppercase).
-    """
-    status_file = f"executor_check_{username}.txt"
-    valid_workspace = None  # Will store the valid workspace path once detected
-
-    # Search only in Workspace paths (uppercase 'W' and lowercase 'w')
-    for executor, base_path in executors.items():
-        for workspace_dir in ["workspace", "Workspace"]:
-            workspace_path = os.path.join(base_path, workspace_dir)
-            if os.path.exists(workspace_path):
-                valid_workspace = workspace_path
-                break  # Exit the loop once a valid workspace is found
-
-        if valid_workspace:
-            # Clear the status file in the detected workspace
-            file_path = os.path.join(valid_workspace, status_file)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)  # Clear the status file for a fresh start
-                    # The print statements have been removed as intended
-                except Exception as e:
-                    pass  # Ignore the error silently
-            break  # Exit the executor loop once the file is removed
-                
-def check_executor_status(username, continuous=False, max_wait_time=240, check_interval=5, max_inactivity_time=30):
-    status_file = f"executor_check_{username}.txt"
-    retry_timeout = time.time() + max_wait_time  
-    active_workspace = None  
-
-    # Dynamically search for a valid workspace (lowercase or uppercase)
-    for executor, base_path in executors.items():
-        for workspace_dir in ["workspace", "Workspace"]:
-            workspace_path = os.path.join(base_path, workspace_dir)
-            if os.path.exists(workspace_path):
-                active_workspace = workspace_path
-                break  # Exit the loop once a valid workspace is found
-
-        if active_workspace:
-            break  # Stop searching once we find a valid workspace
-
-    if not active_workspace:
-        # No valid workspace found; skip executor check silently
-        return True  # Skip the check if no valid workspace is found
-
-    start_time = time.time()
-    
-    while True:  # Continuous checking or stop after max_wait_time if continuous=False
-        file_path = os.path.join(active_workspace, status_file)
-
-        if os.path.exists(file_path):
-            # Check the last modification time
-            last_modified_time = os.path.getmtime(file_path)
-            current_time = time.time()
-
-            # If the file was modified within the max_inactivity_time, we assume it's still being updated
-            if current_time - last_modified_time < max_inactivity_time:
-                with open(file_path, 'r') as f:
-                    content = f.read().strip()
-
-                    # Check if the content starts with "working", ignore the timestamp for this check
-                    if content.startswith("working"):
-                        return True  # Executor loaded successfully
-
-        # Exit after max_wait_time if continuous is False
-        if not continuous and time.time() > retry_timeout:
-            return False  # Trigger a rejoin or retry logic
-
-        # Continue checking at regular intervals
-        time.sleep(check_interval)  # Wait before checking again
+    print(Fore.LIGHTCYAN_EX + header + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Improved By Axionix For Xero Hub" + Style.RESET_ALL)
 
 def create_dynamic_menu(options):
     # Determine the maximum width needed for the menu
@@ -283,7 +96,7 @@ def handle_exit_signal(signum, frame):
 
 def update_status_table(package_statuses):
     clear_screen()
-    print_rainbow_header()
+    print_header()
 
     headers = ["Package", "Username", "Status"]
     status_width = 30  
@@ -501,16 +314,16 @@ def capture_screenshot():
     screenshots_dir = os.path.join(current_dir, "screenshots")
     os.makedirs(screenshots_dir, exist_ok=True)
     screenshot_path = os.path.join(screenshots_dir, "screenshot.png")
-    
+
     if shutil.which("screencap") is None:
         print(Fore.RED + "An Error Occurred While Running The Code To Take A Screenshot!" + Style.RESET_ALL)
-        return None
+        return ""
 
     result = subprocess.run(["screencap", "-p", screenshot_path], capture_output=True)
-    
+
     if result.returncode != 0 or not os.path.exists(screenshot_path):
-        print(Fore.RED + f"An Error Occurred While Taking Photos!" + Style.RESET_ALL)
-        return None
+        print(Fore.RED + "An Error Occurred While Taking Screenshot!" + Style.RESET_ALL)
+        return ""
 
     return screenshot_path
 
@@ -571,8 +384,8 @@ def send_webhook():
     while not stop_webhook_thread:
         screenshot_path = capture_screenshot()
 
-        if screenshot_path is None or not os.path.exists(screenshot_path):
-            print(Fore.RED + "An Error Occurred While Taking Photos!" + Style.RESET_ALL)
+        if not screenshot_path or not os.path.exists(screenshot_path):
+            print(Fore.RED + "An Error Occurred While Taking Screenshot!" + Style.RESET_ALL)
             continue
 
         system_info = get_system_info()
@@ -584,8 +397,8 @@ def send_webhook():
             "fields": [
                 {"name": "Device Name", "value": device_name, "inline": True},
                 {"name": "CPU Usage", "value": f"{system_info['cpu_usage']}%", "inline": True},
-                {"name": "Memory Used", "value": f"{system_info['memory_used'] / system_info['memory_total'] * 100:.2f}%", "inline": True},
-                {"name": "Memory Available", "value": f"{system_info['memory_available'] / system_info['memory_total'] * 100:.2f}%", "inline": True},
+                {"name": "Memory Used", "value": f"{(system_info['memory_used'] / system_info['memory_total']) * 100:.2f}%", "inline": True},
+                {"name": "Memory Available", "value": f"{(system_info['memory_available'] / system_info['memory_total']) * 100:.2f}%", "inline": True},
                 {"name": "Total Memory", "value": f"{system_info['memory_total'] / (1024 ** 3):.2f} GB", "inline": True},
                 {"name": "Uptime", "value": f"{system_info['uptime'] / 3600:.2f} giờ", "inline": True},
                 {"name": "Number Of Roblox Games On Device", "value": f"{roblox_process_count}", "inline": True}
@@ -608,17 +421,16 @@ def send_webhook():
                     files={"file": ("screenshot.png", file)}
                 )
 
-            if response.status_code in [200, 204]:
-                pass  
-            else:
-                pass  
+            if response.status_code not in [200, 204]:
+                print(Fore.RED + "Failed to send webhook." + Style.RESET_ALL)
+
         except Exception as e:
-            pass  
+            print(Fore.RED + f"Exception occurred: {e}" + Style.RESET_ALL)
 
         try:
             os.remove(screenshot_path)
         except Exception as e:
-            pass  
+            print(Fore.RED + f"Error deleting screenshot: {e}" + Style.RESET_ALL)
 
         time.sleep(interval * 60)
 
@@ -633,12 +445,12 @@ def setup_webhook():
 
     webhook_url = input(Fore.CYAN + "Please Enter Your Webhook URL: " + Style.RESET_ALL)
     device_name = input(Fore.CYAN + "Please Enter Device Name: " + Style.RESET_ALL) 
-    interval = int(input(Fore.CYAN + "Please Enter Sending Time Range(Minutes): " + Style.RESET_ALL))
+    interval = int(input(Fore.CYAN + "Please Enter Sending Time Range (Minutes): " + Style.RESET_ALL))
 
     save_config()  
 
     stop_webhook_thread = False
-    threading.Thread(target=send_webhook).start()
+    start_webhook_thread()
 
 def is_roblox_running(package_name):
     package_name = package_name.lower() 
@@ -660,117 +472,32 @@ def kill_roblox_process(package_name):
     os.system(f"pkill -f {package_name}")
     time.sleep(1) 
 
-def update_package_status(package_name, status, package_statuses):
-    package_statuses[package_name]["Status"] = status
-    update_status_table(package_statuses)
-
 def launch_roblox(package_name, server_link, num_packages, package_statuses):
+    def update_status(message):
+        package_statuses[package_name]["Status"] = message
+        update_status_table(package_statuses)
+
     try:
-        update_package_status(package_name, Fore.YELLOW + f"Enabling Roblox Game For Package: {package_name}..." + Style.RESET_ALL, package_statuses)
+        # Opening Roblox (Initial Splash)
+        update_status(Fore.LIGHTCYAN_EX + f"Opening Roblox for {package_name}..." + Style.RESET_ALL)
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(5 if num_packages >= 6 else 8)
 
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(5) 
-
-        update_package_status(package_name, Fore.YELLOW + f"Joining Roblox Game For Package: {package_name}..." + Style.RESET_ALL, package_statuses)
-        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        update_status(Fore.LIGHTCYAN_EX + f"Joining Roblox for {package_name}..." + Style.RESET_ALL)
+        subprocess.run(['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
+        # Wait a moment to ensure Roblox has launched
         time.sleep(10)
 
-        update_package_status(package_name, Fore.GREEN + "Joined Roblox Game" + Style.RESET_ALL, package_statuses)
+        # Update status after successful join
+        update_status(Fore.GREEN + "Joined Roblox" + Style.RESET_ALL)
 
     except Exception as e:
-        update_package_status(package_name, Fore.RED + f"An Error Occurred While Enabling Roblox Game For Package: {package_name}, Status Code: {e}" + Style.RESET_ALL, package_statuses)
+        # Handle exceptions and log them
+        update_status(Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL)
         print(f"Error details: {e}")
-
-def check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts):
-    try:
-        detected_executors = detect_and_write_lua_script()
-
-        if detected_executors:
-            print(f"Checking executor status for {package_name} with username {username}...")
-
-            # Timeout for executor loading (2 minutes)
-            executor_loaded = False
-            timeout = 120
-            check_interval = 10
-            start_time = time.time()
-
-            while time.time() - start_time < timeout:
-                if check_executor_status(username):
-                    package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
-                    executor_loaded = True
-                    break
-                time.sleep(check_interval)
-
-            if not executor_loaded:
-                # Rejoin process if executor failed to load
-                package_statuses[package_name]["Status"] = Fore.RED + f"Executor failed for {username}, rejoining..." + Style.RESET_ALL
-                update_status_table(package_statuses)
-
-                kill_roblox_process(package_name)
-                time.sleep(1)
-                launch_roblox(package_name, server_link, num_packages, package_statuses)
-                return check_executor_and_rejoin(package_name, username, package_statuses, server_link, num_packages, accounts)
-
-        else:
-            # No executor detected, proceed normally
-            package_statuses[package_name]["Status"] = Fore.GREEN + f"Joined without executor for {username}" + Style.RESET_ALL
-
-        update_status_table(package_statuses)
-
-        # Start background executor monitoring after joining
-        threading.Thread(
-            target=background_executor_monitor,
-            args=(package_name, username, package_statuses, server_link, num_packages),
-            daemon=True
-        ).start()
-
-    except Exception as e:
-        package_statuses[package_name]["Status"] = Fore.RED + f"Error checking executor: {e}" + Style.RESET_ALL
-        update_status_table(package_statuses)
-
-def background_executor_monitor(package_name, username, package_statuses, server_link, num_packages, retry_limit=3):
-    retry_count = 0
-
-    try:
-        while True:
-            # Periodically check the executor status every 10 seconds
-            if not check_executor_status(username, continuous=False):
-                # Increment retry count
-                retry_count += 1
-                package_statuses[package_name]["Status"] = Fore.RED + "Your Roblox Game Is Shut Down Or Not Showing UI, Rejoining..." + Style.RESET_ALL
-                update_status_table(package_statuses)
-                
-                # Check if retry limit reached to prevent endless rejoining
-                if retry_count >= retry_limit:
-                    package_statuses[package_name]["Status"] = Fore.RED + "Reached retry limit, stopping rejoin attempts..." + Style.RESET_ALL
-                    update_status_table(package_statuses)
-                    break
-
-                with rejoin_lock:
-                    # Rejoin by killing the current Roblox process and relaunching
-                    kill_roblox_process(package_name)
-                    time.sleep(1)  # Grace period before relaunching
-                    launch_roblox(package_name, server_link, num_packages, package_statuses)
-                    
-                    # Wait another 30 seconds before checking executor status after relaunch
-                    time.sleep(30)
-
-                # Check the executor status again after relaunch
-                if check_executor_status(username, continuous=False):
-                    # Reset retry count if executor successfully loaded
-                    retry_count = 0
-                    package_statuses[package_name]["Status"] = Fore.GREEN + "Executor reloaded successfully after rejoin." + Style.RESET_ALL
-                    update_status_table(package_statuses)
-                else:
-                    package_statuses[package_name]["Status"] = Fore.RED + "Executor still failed after rejoin, retrying..." + Style.RESET_ALL
-                    update_status_table(package_statuses)
-
-            # Wait before the next check
-            time.sleep(30)
-    except Exception as e:
-        package_statuses[package_name]["Status"] = Fore.RED + f"Error in background monitor: {e}" + Style.RESET_ALL
-        update_status_table(package_statuses)
         
 def get_game_name(game_link_or_id):
     try:
@@ -966,31 +693,34 @@ def check_user_online(user_id):
     delay = 2
     primary_url = "https://presence.roblox.com/v1/presence/users"
     headers = {'Content-Type': 'application/json'}
-    payload = {"userIds": [user_id]}
+    body = json.dumps({"userIds": [user_id]})
 
-    with requests.Session() as session:
-        for attempt in range(max_retries):
-            try:
-                response = session.post(primary_url, headers=headers, json=payload, timeout=7)
-                response.raise_for_status()
-                data = response.json()
-                presence = data["userPresences"][0]
-                presence_type = presence["userPresenceType"]
-                last_location = presence.get("lastLocation", None)
+    for attempt in range(max_retries):
+        try:
+            with requests.Session() as session:
+                response = session.post(primary_url, headers=headers, data=body, timeout=7)
+            response.raise_for_status()
 
-                if last_location == "Website":
-                    print(Fore.YELLOW + f"{user_id} Is Still On The Interface But Not In The Game, Start Rejoining Again..." + Style.RESET_ALL)
-                    return 0, last_location  
+            user_presence = response.json()["userPresences"][0]
+            presence_type = user_presence["userPresenceType"]
+            last_location = user_presence.get("lastLocation")
 
-                return presence_type, last_location
+            if last_location == "Website":
+                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
+                presence_type = 0  # Set presence type to offline to trigger a rejoin
 
-            except requests.exceptions.RequestException:
-                if attempt < max_retries - 1:
-                    time.sleep(delay)
-                    delay *= 2  
-                else:
-                    print(Fore.RED + "An Error Occurred While Checking Online" + Style.RESET_ALL)
-                    return None, None
+            return presence_type, last_location
+
+        except requests.exceptions.RequestException as e:
+            print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+                delay *= 2  # Exponential backoff
+        except (KeyError, IndexError) as e:
+            print(Fore.RED + f"Unexpected response format for user {user_id}: {e}" + Style.RESET_ALL)
+            return None, None
+
+    return None, None
 
 def get_hwid_file_path(package_name):
     directory = f"/data/data/{package_name}/app_assets/content/"
@@ -1068,16 +798,14 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
 
-detect_and_write_lua_script() 
-
 def main():
     clear_screen() 
     load_cache()  
     
-    print_rainbow_header()
+    print_header()
     while True:
         clear_screen()  
-        print_rainbow_header() 
+        print_header()
 
         menu_options = [
             "Start Auto Rejoin Roblox Game",
@@ -1109,6 +837,10 @@ def main():
                 print(Fore.RED + "No game ID or private server link set up yet! Please set them up before proceeding." + Style.RESET_ALL)
                 continue
 
+            if webhook_url and device_name and interval:
+                if webhook_thread is None or not webhook_thread.is_alive():
+                    start_webhook_thread()
+
             try:
                 force_rejoin_interval = int(input(Fore.CYAN + "Please Enter Required Time To Kill/Rejoin For Roblox Game: " + Style.RESET_ALL)) * 60
                 if force_rejoin_interval <= 0:
@@ -1117,10 +849,6 @@ def main():
                 print(Fore.RED + f"Invalid input: {ve}. Please enter a valid interval in minutes." + Style.RESET_ALL)
                 input(Fore.GREEN + "Press Enter to return to the menu..." + Style.RESET_ALL)
                 continue
-
-            if webhook_url and device_name and interval:
-                if webhook_thread is None or not webhook_thread.is_alive():
-                    start_webhook_thread()
 
             package_statuses = {}
             for package_name, server_link in server_links:
@@ -1143,30 +871,7 @@ def main():
                     launch_roblox(package_name, server_link, num_packages, package_statuses)
                     package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
 
-                    # Get the username for the executor check
-                    username = get_username(accounts[server_links.index((package_name, server_link))][1])
-
-                    # Reset the executor file before checking
-                    reset_executor_file(username)
-
-                    # Ensure the tool waits for the executor to load before proceeding to the next package
-                    while True:
-                        if check_executor_status(username, continuous=False):
-                            package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
-                            update_status_table(package_statuses)
-                            break  # Break the loop and proceed to the next package
-
-                        # If the executor failed to load within 2 minutes, rejoin and retry
-                        else:
-                            print(f"Executor did not load for {package_name} (username: {username}). Rejoining...")
-                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
-                            update_status_table(package_statuses)
-                            kill_roblox_process(package_name)
-                            time.sleep(1)
-                            launch_roblox(package_name, server_link, num_packages, package_statuses)
-
                 except Exception as e:
-                    # Handle subprocess or launch error
                     print(Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL)
                     package_statuses[package_name]["Status"] = Fore.RED + "Launch failed" + Style.RESET_ALL
                 update_status_table(package_statuses)
@@ -1179,14 +884,12 @@ def main():
                 try:
                     for package_name, user_id in accounts:
                         try:
-                            # Retrieve the correct server_link for the package_name
                             server_link = get_server_link(package_name, server_links)
                             if not server_link:
                                 package_statuses[package_name]["Status"] = Fore.RED + "Server link not found" + Style.RESET_ALL
                                 update_status_table(package_statuses)
                                 continue
 
-                            # Get the username associated with the user ID or fallback to user ID
                             username = get_username_from_id(user_id)
                             presence_type, last_location_current = check_user_online(user_id)
 
@@ -1194,30 +897,14 @@ def main():
 
                             if presence_type == 2:
                                 package_statuses[package_name]["Status"] = Fore.GREEN + "In-Game" + Style.RESET_ALL
-                                
-                                if not check_executor_status(username, continuous=False):  # If executor isn't detected as working
-                                    print(f"Executor did not update for {package_name} (username: {username}). Rejoining...")
-                                    package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
-                                    update_status_table(package_statuses)
-                                    kill_roblox_process(package_name)
-                                    time.sleep(1)
-                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
-                                    
+
                             else:
                                 if not is_roblox_running(package_name):
                                     package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
                                     kill_roblox_process(package_name)
                                     time.sleep(1)
                                     launch_roblox(package_name, server_link, num_packages, package_statuses)
-                                    
-                                    # Check executor status after relaunch
-                                    if not check_executor_status(username, continuous=False):
-                                        print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
-                                        package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
-                                        kill_roblox_process(package_name)
-                                        time.sleep(1)
-                                        launch_roblox(package_name, server_link, num_packages, package_statuses)
-                                    
+
                                 else:
                                     if last_location_current == "Website":
                                         package_statuses[package_name]["Status"] = Fore.RED + "On Website, Rejoining" + Style.RESET_ALL
@@ -1225,24 +912,8 @@ def main():
                                         time.sleep(1)
                                         launch_roblox(package_name, server_link, num_packages, package_statuses)
 
-                                        # Check executor status after relaunch
-                                        if not check_executor_status(username, continuous=False):
-                                            print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
-                                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
-                                            update_status_table(package_statuses)
-                                            kill_roblox_process(package_name)
-                                            time.sleep(1)
-                                            launch_roblox(package_name, server_link, num_packages, package_statuses)
-
-                                        # If executor loaded successfully after relaunch
-                                        else:
-                                            package_statuses[package_name]["Status"] = Fore.GREEN + "Executor loaded successfully after rejoin" + Style.RESET_ALL
-                                            update_status_table(package_statuses)
-                                    else:
-                                        package_statuses[package_name]["Status"] = Fore.YELLOW + "Not In-Game, Recently Active" + Style.RESET_ALL
-
                             update_status_table(package_statuses)
-                            time.sleep(15)  # Adjust the delay time as needed
+                            time.sleep(15)
 
                         except Exception as e:
                             print(Fore.RED + f"Error during rejoin process for {package_name}: {e}" + Style.RESET_ALL)
@@ -1260,14 +931,6 @@ def main():
                                 package_statuses[package_name]["Status"] = Fore.RED + "Rejoining" + Style.RESET_ALL
                                 update_status_table(package_statuses)
                                 launch_roblox(package_name, server_link, num_packages, package_statuses)
-                                
-                                # Check executor status after relaunch
-                                if not check_executor_status(username, continuous=False):
-                                    print(f"Executor did not load for {package_name} (username: {username}) after rejoin. Rejoining...")
-                                    package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
-                                    kill_roblox_process(package_name)
-                                    time.sleep(1)
-                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
 
                                 package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
                             except Exception as e:
