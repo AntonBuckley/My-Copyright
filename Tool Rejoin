@@ -1,5 +1,5 @@
 from colorama import init, Fore, Style
-
+init()
 print(Fore.GREEN + "Xero Hub's Current Rejoin Tool Version Is V1.1" + Style.RESET_ALL)
 print(Fore.RED + "You Are Using An Old Version" + Style.RESET_ALL)
 print(Fore.RED + "Visit Xero Hub's Discord To Download The Latest: https://discord.gg/fqNxktESCH" + Style.RESET_ALL)
